@@ -1,52 +1,27 @@
 export function createAiReviewCore() {
-  const api='https://muzermat.online:8443/oj-review-api/v1';
-  const states={not_collected:'尚未采集',rules_only:'规则已完成，未运行模型',waiting_model:'已选入批次，待调度',queued:'排队',running:'处理中',completed:'完成',context_limited:'上下文不足，未运行模型',failed:'失败',stale:'结果过期',cancelled:'已取消'};
-  function viewState(review){return review.batch?.selection==='rules_only'?'rules_only':review.state;}
-  const priorities={review:'需要复核',priority:'优先复核'};
-  function reviewPriority(review){return review.review_priority??review.model_result?.result?.review_priority;}
-  function hasFlaggedReview(review){
-    const performed=review.inference_performed??(review.model_result?review.model_result.inference_performed!==false:false);
-    return review.state==='completed'&&performed===true&&Object.hasOwn(priorities,reviewPriority(review));
-  }
-  const selections={candidate:'候选复核',sample:'未命中抽样',rules_only:'仅规则检查'};
-  function coverage(reviews){
-    const counts={total:reviews.length,rules:0,candidate:0,sample:0,rules_only:0,unbatched:0,model:{},batches:[]};
-    const ids=new Map();
-    for(const r of reviews){
-      if(r.data_exists)counts.rules++;
-      if(!r.batch){counts.unbatched++;continue;}
-      counts[r.batch.selection]++;ids.set(r.batch.batch_id,r.batch.batch_name);
-      if(r.batch.selection!=='rules_only'){const state=r.state==='stale'?'stale':r.batch.state;counts.model[state]=(counts.model[state]||0)+1;}
-    }
-    counts.batches=[...ids].map(([id,name])=>({id,name}));return counts;
-  }
-  const signalKinds={scanf_guard:'输入失败防护',explanatory_comments:'讲解注释',numbered_comments:'编号步骤',dialogue_comment:'对答建议',template_comment:'模板／IDE 说明',problem_comment:'题面复述',variable_comment:'普通变量说明',commented_code:'注释掉的代码',style_change:'版本变化',other:'其他'};
-  function classSubmissions(records,members) {
-    const ids=new Map(members.filter(m=>m.status==='matched'&&m.userId).map(m=>[String(m.userId),m]));
-    return records.filter(s=>/^[1-9]\d*$/.test(String(s.id))&&ids.has(String(s.creator_id??s.creator?.id))).map(s=>({...s,id:String(s.id),member:ids.get(String(s.creator_id??s.creator?.id))}));
-  }
-  function batches(ids){const unique=[...new Set(ids.map(String))];return Array.from({length:Math.ceil(unique.length/250)},(_,i)=>unique.slice(i*250,i*250+250));}
-  function client(getToken,fetcher=fetch) {
-    const cache=new Map();
-    async function request(path,body,signal) {
+  const api='https://muzermat.online:8443/oj-review-api/v2';
+  const selections={candidate:'候选复核',sample:'连续提交抽样',manual:'单独复核'};
+  const states={paused:'已暂停',running:'正在复核',completed:'复核完成',failed:'运行失败'};
+  function hasFlaggedReview(r){return r?.ai_suspected===true&&typeof r.model_digest==='string'&&/^[a-f0-9]{64}$/.test(r.model_digest)&&Number.isFinite(r.score)&&Number.isFinite(r.threshold)&&r.score>=r.threshold;}
+  function members(rows){return new Map(rows.filter(m=>m.status==='matched'&&/^[1-9]\d*$/.test(String(m.userId))).map(m=>[String(m.userId),m]));}
+  function client(getToken,fetcher=fetch){
+    async function request(path,body,signal){
       const token=getToken().trim();if(!token)throw new Error('请先在复核设置中填写只读令牌。');
       const res=await fetcher(api+path,{method:body?'POST':'GET',headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},credentials:'omit',cache:'no-store',signal,body:body?JSON.stringify(body):undefined});
+      if(res.status===404&&path.startsWith('/submissions/'))return null;
       if(!res.ok)throw new Error(`复核读取失败（HTTP ${res.status}）。${[401,403].includes(res.status)?'请检查只读令牌。':''}`);
       return res.json();
     }
-    return {clear:()=>cache.clear(),detail:(id,signal)=>request(`/submissions/${encodeURIComponent(id)}/review`,null,signal),
-      async query(ids,signal,force=false){
-        const found=new Map();
-        const wanted=ids.map(String).filter(id=>{const hit=cache.get(id);if(!force&&hit&&Date.now()-hit.time<60000){found.set(id,hit.review);return false;}return true;});
-        for(const batch of batches(wanted)){
-          if(signal?.aborted)throw new DOMException('Aborted','AbortError');
-          const data=await request('/reviews/query',{submission_ids:batch},signal);
-          if(!Array.isArray(data.reviews))throw new Error('复核 API 返回格式无效');
-          for(const review of data.reviews){if(!batch.includes(review.submission_id))continue;found.set(review.submission_id,review);if(review.state==='completed')cache.set(review.submission_id,{time:Date.now(),review});}
-          for(const id of batch)if(!found.has(id))throw new Error('复核 API 缺少查询结果，请刷新重试');
-        }
-        return ids.map(id=>found.get(String(id)));
-      }};
+    return {
+      progress:(contest,signal)=>request(`/contests/${contest}/progress`,null,signal),
+      async detail(id,signal){const r=await request(`/submissions/${encodeURIComponent(id)}/review`,null,signal);if(r&&!hasFlaggedReview(r))throw new Error('复核结果缺少有效模型判断');return r;},
+      async search(query,signal){
+        const r=await request('/reviews/search',query,signal);
+        if(!Array.isArray(r.reviews)||!Number.isInteger(r.total)||r.total<0||r.reviews.length>query.limit)throw new Error('复核 API 返回格式无效');
+        if(r.reviews.some(x=>!hasFlaggedReview(x)||x.contest_id!==query.contest_id||!query.creator_ids.includes(String(x.creator_id))))throw new Error('复核结果与当前班级不一致');
+        return r;
+      }
+    };
   }
-  return {api,states,selections,coverage,viewState,priorities,reviewPriority,hasFlaggedReview,signalKinds,classSubmissions,batches,client};
+  return {api,selections,states,members,hasFlaggedReview,client};
 }

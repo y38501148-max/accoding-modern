@@ -11,7 +11,7 @@ function mountClassManager(core, contestCore, upsolveCore, upsolveReader, review
   </style>
   <button class="launch" type="button">▦ 班级</button>
   <section class="overlay" hidden role="dialog" aria-modal="true" aria-label="班级管理">
-    <div class="shell"><header class="top"><div><div class="eyebrow">ACCODING · CLASSROOM</div><h1>班级</h1><span class="tag">1.9.1</span></div><button data-action="close">← 返回 OJ</button></header>
+    <div class="shell"><header class="top"><div><div class="eyebrow">ACCODING · CLASSROOM</div><h1>班级</h1><span class="tag">1.10.0</span></div><button data-action="close">← 返回 OJ</button></header>
     <div class="toolbar"><div class="row"><select id="class-select" aria-label="选择班级"></select><button data-action="import">＋ 导入名册</button></div><div class="row"><button data-action="rename">重命名</button><button data-action="export">导出名册 CSV</button><button class="danger" data-action="delete">删除班级</button></div></div>
     <div id="message" class="message" role="status" aria-live="polite" hidden></div>
     <section id="import-panel" class="panel" hidden><h2>从 Excel 创建班级</h2><div class="row"><input id="file" type="file" accept=".xlsx" aria-label="选择 XLSX 名册"><label>工作表 <select id="sheet" disabled></select></label><label>班级名称 <input id="class-name" maxlength="80" placeholder="例如：26 秋程设 · 王君臣"></label><button class="primary" data-action="create" disabled>确认创建</button><button data-action="cancel-import">取消</button></div><div id="preview" class="preview"></div></section>
@@ -58,7 +58,7 @@ function mountClassManager(core, contestCore, upsolveCore, upsolveReader, review
     prev.disabled = page <= 0; next.disabled = page >= pages - 1;
     target.append(el('span', `共 ${count} 条 · ${page + 1} / ${pages}`, 'muted'), prev, next);
   }
-  const reviewPanel=createAiReviewPanel($('#review-pane'),reviewCore,()=>({classId:currentId,className:selected()?.name,contest,summary,generation}),async(id,signal)=>readJson(`/api/contests/${id}/submissions?latest=0`,signal));
+  const reviewPanel=createAiReviewPanel($('#review-pane'),reviewCore,()=>({classId:currentId,className:selected()?.name,contest,summary,generation}),null);
   function resetContest() {
     reviewPanel.reset();
     generation++; upsolveController?.abort();upsolveController=null;upsolve=null;rankingPage=0;drawStandings();$('#upsolve-time').textContent='';$('[data-action=upsolve]').disabled=true;$('[data-action=cancel-upsolve]').hidden=true;$('#submission-scope').value='contest';for(const o of $('#submission-scope').options)o.disabled=o.value!=='contest';$('#student-problems').hidden=true; rankController?.abort(); subController?.abort(); rankController = subController = null;

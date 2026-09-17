@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Accoding Modern · 北航 OJ 管理界面
 // @namespace    local.accoding.modern
-// @version      1.9.1
+// @version      1.10.0
 // @description  界面美化、班级名册、页内代码复核、独立补题排行榜与提交查看、赛事统计看板、Markdown 兼容编辑与批量测试点选择，保留原站登录和操作。
 // @include      https://accoding.buaa.edu.cn:4000/*
 // @run-at       document-end
@@ -1221,155 +1221,128 @@ async function readClassXlsx(file) {
 }
 
 function createAiReviewCore() {
-  const api='https://muzermat.online:8443/oj-review-api/v1';
-  const states={not_collected:'尚未采集',rules_only:'规则已完成，未运行模型',waiting_model:'已选入批次，待调度',queued:'排队',running:'处理中',completed:'完成',context_limited:'上下文不足，未运行模型',failed:'失败',stale:'结果过期',cancelled:'已取消'};
-  function viewState(review){return review.batch?.selection==='rules_only'?'rules_only':review.state;}
-  const priorities={review:'需要复核',priority:'优先复核'};
-  function reviewPriority(review){return review.review_priority??review.model_result?.result?.review_priority;}
-  function hasFlaggedReview(review){
-    const performed=review.inference_performed??(review.model_result?review.model_result.inference_performed!==false:false);
-    return review.state==='completed'&&performed===true&&Object.hasOwn(priorities,reviewPriority(review));
-  }
-  const selections={candidate:'候选复核',sample:'未命中抽样',rules_only:'仅规则检查'};
-  function coverage(reviews){
-    const counts={total:reviews.length,rules:0,candidate:0,sample:0,rules_only:0,unbatched:0,model:{},batches:[]};
-    const ids=new Map();
-    for(const r of reviews){
-      if(r.data_exists)counts.rules++;
-      if(!r.batch){counts.unbatched++;continue;}
-      counts[r.batch.selection]++;ids.set(r.batch.batch_id,r.batch.batch_name);
-      if(r.batch.selection!=='rules_only'){const state=r.state==='stale'?'stale':r.batch.state;counts.model[state]=(counts.model[state]||0)+1;}
-    }
-    counts.batches=[...ids].map(([id,name])=>({id,name}));return counts;
-  }
-  const signalKinds={scanf_guard:'输入失败防护',explanatory_comments:'讲解注释',numbered_comments:'编号步骤',dialogue_comment:'对答建议',template_comment:'模板／IDE 说明',problem_comment:'题面复述',variable_comment:'普通变量说明',commented_code:'注释掉的代码',style_change:'版本变化',other:'其他'};
-  function classSubmissions(records,members) {
-    const ids=new Map(members.filter(m=>m.status==='matched'&&m.userId).map(m=>[String(m.userId),m]));
-    return records.filter(s=>/^[1-9]\d*$/.test(String(s.id))&&ids.has(String(s.creator_id??s.creator?.id))).map(s=>({...s,id:String(s.id),member:ids.get(String(s.creator_id??s.creator?.id))}));
-  }
-  function batches(ids){const unique=[...new Set(ids.map(String))];return Array.from({length:Math.ceil(unique.length/250)},(_,i)=>unique.slice(i*250,i*250+250));}
-  function client(getToken,fetcher=fetch) {
-    const cache=new Map();
-    async function request(path,body,signal) {
+  const api='https://muzermat.online:8443/oj-review-api/v2';
+  const selections={candidate:'候选复核',sample:'连续提交抽样',manual:'单独复核'};
+  const states={paused:'已暂停',running:'正在复核',completed:'复核完成',failed:'运行失败'};
+  function hasFlaggedReview(r){return r?.ai_suspected===true&&typeof r.model_digest==='string'&&/^[a-f0-9]{64}$/.test(r.model_digest)&&Number.isFinite(r.score)&&Number.isFinite(r.threshold)&&r.score>=r.threshold;}
+  function members(rows){return new Map(rows.filter(m=>m.status==='matched'&&/^[1-9]\d*$/.test(String(m.userId))).map(m=>[String(m.userId),m]));}
+  function client(getToken,fetcher=fetch){
+    async function request(path,body,signal){
       const token=getToken().trim();if(!token)throw new Error('请先在复核设置中填写只读令牌。');
       const res=await fetcher(api+path,{method:body?'POST':'GET',headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},credentials:'omit',cache:'no-store',signal,body:body?JSON.stringify(body):undefined});
+      if(res.status===404&&path.startsWith('/submissions/'))return null;
       if(!res.ok)throw new Error(`复核读取失败（HTTP ${res.status}）。${[401,403].includes(res.status)?'请检查只读令牌。':''}`);
       return res.json();
     }
-    return {clear:()=>cache.clear(),detail:(id,signal)=>request(`/submissions/${encodeURIComponent(id)}/review`,null,signal),
-      async query(ids,signal,force=false){
-        const found=new Map();
-        const wanted=ids.map(String).filter(id=>{const hit=cache.get(id);if(!force&&hit&&Date.now()-hit.time<60000){found.set(id,hit.review);return false;}return true;});
-        for(const batch of batches(wanted)){
-          if(signal?.aborted)throw new DOMException('Aborted','AbortError');
-          const data=await request('/reviews/query',{submission_ids:batch},signal);
-          if(!Array.isArray(data.reviews))throw new Error('复核 API 返回格式无效');
-          for(const review of data.reviews){if(!batch.includes(review.submission_id))continue;found.set(review.submission_id,review);if(review.state==='completed')cache.set(review.submission_id,{time:Date.now(),review});}
-          for(const id of batch)if(!found.has(id))throw new Error('复核 API 缺少查询结果，请刷新重试');
-        }
-        return ids.map(id=>found.get(String(id)));
-      }};
+    return {
+      progress:(contest,signal)=>request(`/contests/${contest}/progress`,null,signal),
+      async detail(id,signal){const r=await request(`/submissions/${encodeURIComponent(id)}/review`,null,signal);if(r&&!hasFlaggedReview(r))throw new Error('复核结果缺少有效模型判断');return r;},
+      async search(query,signal){
+        const r=await request('/reviews/search',query,signal);
+        if(!Array.isArray(r.reviews)||!Number.isInteger(r.total)||r.total<0||r.reviews.length>query.limit)throw new Error('复核 API 返回格式无效');
+        if(r.reviews.some(x=>!hasFlaggedReview(x)||x.contest_id!==query.contest_id||!query.creator_ids.includes(String(x.creator_id))))throw new Error('复核结果与当前班级不一致');
+        return r;
+      }
+    };
   }
-  return {api,states,selections,coverage,viewState,priorities,reviewPriority,hasFlaggedReview,signalKinds,classSubmissions,batches,client};
+  return {api,selections,states,members,hasFlaggedReview,client};
 }
 
-function createAiReviewPanel(container,core,getContext,readMetadata,options={}) {
+function createAiReviewPanel(container,core,getContext,_readMetadata,options={}) {
   const configKey='accoding-modern.ai-review.v1',noteKey='accoding-modern.ai-review.notes.v1';
   let token='';try{token=JSON.parse(localStorage.getItem(configKey)||'{}').token||'';}catch{}
-  let version=0,controller=null,timer=null,rows=[],page=0,active=false,detailVersion=0,detailController=null;
-  const client=core.client(()=>token);
+  let generation=0,controller=null,timer=null,rows=[],page=0,total=0,active=false,detailVersion=0,detailController=null;
+  const client=core.client(()=>token),size=30;
   const el=(tag,text)=>{const n=document.createElement(tag);if(text!=null)n.textContent=String(text);return n;};
   const button=(text,fn)=>{const b=el('button',text);b.type='button';b.onclick=fn;return b;};
-  const select=(label,options)=>{const s=el('select');s.setAttribute('aria-label',label);for(const [value,text] of options){const o=el('option',text);o.value=value;s.append(o);}s.onchange=()=>{page=0;draw();};return s;};
-  const heading=el('h2','代码复核');
-  const controls=el('div');controls.className='row';
-  const selections={candidate:'候选复核',sample:'未命中抽样',rules_only:'此前复核',unbatched:'单独复核'};
-  const selection=select('批次选入方式',[['all','全部复核来源'],...Object.entries(selections)]);
-  const feature=select('代码特征',[['all','全部特征'],['any','有规则标签'],['注释','注释'],['scanf','scanf 防护'],['短时','短时大改']]);
+  const select=(name,values)=>{const s=el('select');s.setAttribute('aria-label',name);for(const [value,text] of values){const o=el('option',text);o.value=value;s.append(o);}s.onchange=()=>{page=0;void refresh();};return s;};
   const problem=select('复核题目',[['all','全部题目']]);
+  const feature=select('代码特征',[['all','全部特征'],...['长变量名','讲解注释','对答建议','过度防御','过度拆分','版本变化'].map(x=>[x,x])]);
+  const selection=select('复核来源',[['all','全部复核来源'],...Object.entries(core.selections)]);
+  const message=el('p','读取比赛后，打开代码复核。');message.setAttribute('role','status');
+  const progress=el('p');progress.setAttribute('aria-live','polite');
   const config=el('details');config.append(el('summary','复核设置'));
   const password=el('input');password.type='password';password.autocomplete='off';password.value=token;password.placeholder='填写共享只读令牌';password.setAttribute('aria-label','复核只读令牌');
   const settingStatus=el('span');
-  config.append(el('p',core.api),password,button('保存令牌',()=>{try{localStorage.setItem(configKey,JSON.stringify({token:password.value.trim()}));token=password.value.trim();client.clear();settingStatus.textContent='已保存到当前浏览器。';if(options.submissionId)void openDetail(options.submissionId);else if(active)void refresh(true);}catch{settingStatus.textContent='保存失败，请检查浏览器存储权限。';}}),button('清除令牌',()=>{localStorage.removeItem(configKey);token=password.value='';client.clear();stop();rows=[];detail.replaceChildren();draw();settingStatus.textContent='已清除。';}),settingStatus);
-  const message=el('p','读取比赛后，打开代码复核。');message.setAttribute('role','status');
-  const coverage=el('p');coverage.setAttribute('aria-live','polite');
-  const list=el('div');list.className='table-wrap';const pager=el('div');pager.className='pager';
-  const detail=el('section');detail.className='panel';detail.hidden=true;
-  controls.append(problem,feature,selection,button('刷新结果',()=>options.submissionId?void openDetail(options.submissionId):void refresh(true)),button('导出当前结果',exportRows));
-  container.append(heading,config,controls,message,coverage,list,pager,detail);
-  if(options.submissionId){problem.hidden=feature.hidden=selection.hidden=coverage.hidden=message.hidden=list.hidden=pager.hidden=true;controls.lastChild.hidden=true;}
-  function contextKey(){const c=getContext();return `${c.classId||''}:${c.contest?.id||''}:${c.generation}`;}
-  function stop(){version++;detailVersion++;controller?.abort();controller=null;detailController?.abort();detailController=null;clearTimeout(timer);timer=null;}
-  function reset(){stop();rows=[];page=0;detail.hidden=true;detail.replaceChildren();list.replaceChildren();pager.replaceChildren();coverage.textContent='';message.textContent='读取比赛后，打开代码复核。';}
-  async function refresh(force=false){
-    stop();const v=version,key=contextKey(),c=getContext();detail.hidden=true;detail.replaceChildren();
+  config.append(password,button('保存令牌',()=>{try{token=password.value.trim();localStorage.setItem(configKey,JSON.stringify({token}));settingStatus.textContent='已保存。';if(options.submissionId)void openDetail(options.submissionId);else if(active)void refresh();}catch{settingStatus.textContent='保存失败，请检查浏览器存储权限。';}}),button('清除令牌',()=>{localStorage.removeItem(configKey);token=password.value='';reset();settingStatus.textContent='已清除。';}),settingStatus);
+  const list=el('div');list.className='table-wrap';const pager=el('div');pager.className='pager';const detail=el('section');detail.className='panel';detail.hidden=true;
+  const controls=el('div');controls.className='row';controls.append(problem,feature,selection,button('刷新结果',()=>options.submissionId?void openDetail(options.submissionId):void refresh()),button('导出当前结果',()=>void exportRows()));
+  container.append(el('h2','代码复核'),config,controls,message,progress,list,pager,detail);
+  if(options.submissionId){problem.hidden=feature.hidden=selection.hidden=progress.hidden=message.hidden=list.hidden=pager.hidden=true;controls.lastChild.hidden=true;}
+  function key(){const c=getContext();return `${c.classId||''}:${c.contest?.id||''}:${c.generation}`;}
+  function stop(){generation++;controller?.abort();detailVersion++;detailController?.abort();clearTimeout(timer);}
+  function reset(){stop();rows=[];total=page=0;detail.hidden=true;detail.replaceChildren();progress.textContent='';message.textContent='读取比赛后，打开代码复核。';draw();}
+  function query(c,offset=page*size,limit=size){return {contest_id:Number(c.contest.id),creator_ids:[...core.members(c.summary.rows).keys()],offset,limit,...(problem.value==='all'?{}:{problem_id:Number(problem.value)}),...(feature.value==='all'?{}:{label:feature.value}),...(selection.value==='all'?{}:{selection:selection.value})};}
+  async function refresh(){
+    stop();const v=generation,k=key(),c=getContext();detail.hidden=true;detail.replaceChildren();
     if(!active||!c.contest||!c.summary){message.textContent='请先读取比赛和榜单，再查看当前班级的代码复核。';return;}
-    const current=new AbortController();controller=current;const timeout=setTimeout(()=>current.abort(),90000);
-    rows=[];draw();message.textContent='正在读取当前班级提交和已有复核结果…';
+    const selectedProblem=problem.value;problem.replaceChildren();for(const [value,text] of [['all','全部题目'],...c.contest.problems.map(p=>[String(p.id),`${p.label} · ${p.title}`])]){const o=el('option',text);o.value=value;problem.append(o);}problem.value=[...problem.options].some(o=>o.value===selectedProblem)?selectedProblem:'all';
+    const current=new AbortController();controller=current;const timeout=setTimeout(()=>current.abort(),20000);
+    rows=[];draw();message.textContent='正在读取当前班级的模型疑似结果…';progress.textContent='';
     try{
-      const metadata=await readMetadata(c.contest.id,current.signal);
-      if(v!==version||key!==contextKey())return;
-      const records=core.classSubmissions(metadata,c.summary.rows);
-      const results=await client.query(records.map(s=>s.id),current.signal,force);
-      if(v!==version||key!==contextKey())return;
-      rows=records.map((s,i)=>({...s,review:results[i]})).sort((a,b)=>Date.parse(b.created_at)-Date.parse(a.created_at)||Number(b.id)-Number(a.id));
-      const previous=problem.value;problem.replaceChildren();for(const [value,text] of [['all','全部题目'],...c.contest.problems.map(p=>[String(p.id),`${p.label} · ${p.title}`])]){const o=el('option',text);o.value=value;problem.append(o);}problem.value=[...problem.options].some(o=>o.value===previous)?previous:'all';
-      message.textContent=`${c.className} · 模型标记需复核 ${rows.filter(s=>core.hasFlaggedReview(s.review)).length} 条提交。`;
-      draw();if(rows.some(s=>['waiting_model','queued','running'].includes(s.review.state)))timer=setTimeout(()=>void refresh(),30000);
-    }catch(e){if(v===version){rows=[];draw();message.textContent=e.name==='AbortError'?'读取超时，请刷新重试。':e.message;}}
+      const [result,state]=await Promise.all([client.search(query(c),current.signal),client.progress(c.contest.id,current.signal)]);
+      if(v!==generation||k!==key())return;
+      const memberMap=core.members(c.summary.rows);rows=result.reviews.map(r=>({...r,member:memberMap.get(String(r.creator_id))}));total=result.total;
+      if(!total)page=0;
+      if(total&&page*size>=total){page=Math.floor((total-1)/size);void refresh();return;}
+      message.textContent=`${c.className} · 模型标记有 AI 生成嫌疑 ${total} 条提交。`;
+      const b=state.batches?.[0];progress.textContent=b?`整场复核${core.states[b.state]||b.state} · 已处理 ${b.completed} / ${b.selected} · 运行失败 ${b.errors}`:'尚无第二版复核批次结果。';
+      draw();if(b?.state==='running')timer=setTimeout(()=>void refresh(),30000);
+    }catch(e){if(v===generation){rows=[];total=0;draw();message.textContent=e.name==='AbortError'?'读取超时，请刷新重试。':e.message;}}
     finally{clearTimeout(timeout);if(controller===current)controller=null;}
   }
-  function filtered(){return rows.filter(s=>core.hasFlaggedReview(s.review)&&(problem.value==='all'||String(s.problem_id)===problem.value)&&(selection.value==='all'||(s.review.batch?.selection||'unbatched')===selection.value)&&(feature.value==='all'||(feature.value==='any'?s.review.labels.length>0:s.review.labels.some(x=>x.includes(feature.value)))));}
   function draw(){
-    const covered=core.coverage(rows.filter(s=>core.hasFlaggedReview(s.review)).map(s=>s.review));
-    coverage.textContent=covered.total?`候选复核 ${covered.candidate}；未命中抽样 ${covered.sample}；此前复核 ${covered.rules_only}；单独复核 ${covered.unbatched}。`:'';
-    const shown=filtered();page=Math.min(page,Math.max(0,Math.ceil(shown.length/30)-1));
-    const table=el('table'),thead=el('thead'),head=el('tr');['提交','学生','题目','提交时间','模型判断','规则标签','复核来源','详情'].forEach(t=>head.append(el('th',t)));thead.append(head);table.append(thead);
-    const body=el('tbody');for(const s of shown.slice(page*30,page*30+30)){
-      const p=getContext().contest?.problems.find(p=>String(p.id)===String(s.problem_id));const tr=el('tr');
-      for(const text of [s.id,`${s.member.name} · ${s.member.studentId}`,p?`${p.label} · ${p.title}`:s.problem_id,new Date(s.created_at).toLocaleString(),core.priorities[core.reviewPriority(s.review)],s.review.labels.join('；')||'无规则标签',selections[s.review.batch?.selection||'unbatched']])tr.append(el('td',text));
-      const td=el('td');td.append(button('查看复核',()=>void openDetail(s.id)));tr.append(td);body.append(tr);
-    }table.append(body);list.replaceChildren(table);pager.replaceChildren(el('span',`共 ${shown.length} 条 · ${page+1} / ${Math.max(1,Math.ceil(shown.length/30))}`));
-    const prev=button('上一页',()=>{page--;draw();}),next=button('下一页',()=>{page++;draw();});prev.disabled=page<=0;next.disabled=(page+1)*30>=shown.length;pager.append(prev,next);
+    const table=el('table'),thead=el('thead'),head=el('tr');['提交','学生','题目','提交时间','模型判断','代码特征','复核来源','详情'].forEach(t=>head.append(el('th',t)));thead.append(head);table.append(thead);
+    const body=el('tbody');for(const r of rows){
+      const p=getContext().contest?.problems.find(p=>String(p.id)===String(r.problem_id));const tr=el('tr');
+      for(const text of [r.submission_id,`${r.member.name} · ${r.member.studentId}`,p?`${p.label} · ${p.title}`:r.problem_id,new Date(r.submitted_at).toLocaleString(),'有 AI 生成嫌疑',r.labels.join('；')||'模型综合判断',core.selections[r.selection]])tr.append(el('td',text));
+      const td=el('td');td.append(button('查看复核',()=>void openDetail(r.submission_id)));tr.append(td);body.append(tr);
+    }
+    table.append(body);list.replaceChildren(table);pager.replaceChildren(el('span',`共 ${total} 条 · ${page+1} / ${Math.max(1,Math.ceil(total/size))}`));
+    const previous=button('上一页',()=>{page--;void refresh();}),next=button('下一页',()=>{page++;void refresh();});previous.disabled=page<=0;next.disabled=(page+1)*size>=total;pager.append(previous,next);
   }
   async function openDetail(id){
-    const n=++detailVersion,v=version,key=contextKey();detail.hidden=false;detail.replaceChildren(el('p','正在读取复核详情…'));
-    detailController?.abort();const c=new AbortController(),t=setTimeout(()=>c.abort(),20000);detailController=c;
+    const n=++detailVersion,k=key();detail.hidden=false;detail.replaceChildren(el('p','正在读取复核详情…'));
+    detailController?.abort();const c=new AbortController(),timeout=setTimeout(()=>c.abort(),20000);detailController=c;
     try{
-      const data=await client.detail(String(id),c.signal);if(n!==detailVersion||v!==version||key!==contextKey())return;
+      const r=await client.detail(String(id),c.signal);if(n!==detailVersion||k!==key())return;
       detail.replaceChildren(button('收起详情',()=>{detailVersion++;detail.hidden=true;}),el('h3',`提交 ${id}`));
-      if(!core.hasFlaggedReview(data)||!data.model_result){detail.append(el('p','暂无模型标记需复核的结果。'));return;}
-      detail.append(el('p',`模型判断：${core.priorities[core.reviewPriority(data)]}`));
+      if(!r){detail.append(el('p','暂无模型标记的疑似结果。'));return;}
       const pre=text=>{const p=el('pre',text);p.style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;background:#f4f7fb;padding:14px;max-height:500px;overflow:auto';return p;};
-      const source=(title,s)=>{if(!s)return;detail.append(el('h3',title),pre(s.code.split('\n').map((line,i)=>`${i+1}  ${line}`).join('\n')));};
-      if(data.batch)detail.append(el('p',`整场批次：${data.batch.batch_name}；${core.selections[data.batch.selection]}；本批状态：${core.states[data.batch.state]||data.batch.state}${data.batch.reused?'；复用相同上下文任务':''}${data.batch.feeder_state==='paused'?'；批次已暂停补入任务':''}`));
-      if(data.batch?.sample_pair)detail.append(el('p',`成对抽样：${data.batch.sample_pair.previous_id} → ${data.batch.sample_pair.current_id}`));
-      source('当前源码',data.source);source('前一版本',data.previous);
-      if(data.revision)detail.append(el('h3','版本变化'),el('p',`${data.revision.seconds} 秒间隔；新增 ${data.revision.added_tokens} token，删除 ${data.revision.removed_tokens} token，改动比例 ${(data.revision.change_ratio*100).toFixed(1)}%`),pre(data.revision.diff));
-      detail.append(el('h3','规则事实'),el('p',data.labels.join('；')||'未命中当前规则标签。'));
-      const f=data.facts,m=f.comment_metrics;
-      detail.append(el('p',`非空行 ${f.nonempty_lines}，原始注释行 ${f.raw_comment_lines}，原始密度 ${(f.raw_comment_ratio*100).toFixed(1)}%`));
-      if(m)detail.append(el('p',`排除 IDE 说明 ${m.excluded_ide_lines} 行后，有效注释 ${m.meaningful_comment_lines} 行，分母 ${m.clean_denominator} 行，密度 ${(m.clean_ratio*100).toFixed(1)}%`));
-      const returns=[['scanf_minus1','-1'],['scanf_zero','0'],['scanf_one','1']].filter(([key])=>f.features[key]).map(([,v])=>v);
-      if(returns.length)detail.append(el('p','scanf 输入失败后立即 return：'+returns.join('、')));
-      for(const e of data.evidence)detail.append(el('p',`规则证据 · 第 ${e.start_line}–${e.end_line} 行`),pre(e.evidence));
-      if(data.model_result){const r=data.model_result.result;if(data.model_result.citation_method==='source_line_reference')detail.append(el('p','引用原文按模型选择的源码行读取；解释仍需人工核验。'));detail.append(el('h3',data.model_result.inference_performed===false?'未执行模型的原因':data.batch?.selection==='rules_only'?'此前模型解释（不计入本批覆盖）':'模型解释'));for(const e of r.signals)detail.append(el('p',`${core.signalKinds[e.kind]||'其他'} · ${e.source==='previous'?'前一版本':'当前源码'} · 第 ${e.start_line}–${e.end_line} 行：${e.explanation}`),pre(e.evidence));detail.append(el('h3','替代解释'),pre(r.alternative_explanations.join('\n')||'未提供'),el('h3','缺失上下文'),pre(r.missing_context.join('\n')||'未列出'));}else detail.append(el('p','尚无模型解释。'));
-      detail.append(el('p',`规则：${data.rule_version}；源码：${data.code_hash}；模型：${data.model_digest||'未运行'}`),el('p',`样本来源：${data.provenance.join('、')||'普通冻结样本'}`));
-      if(data.annotations?.length)detail.append(el('h3','集中人工记录'),pre(JSON.stringify(data.annotations,null,2)));
-      const mark=select('人工复核标记',[['retained','保留复核'],['ordinary','普通写法'],['insufficient','信息不足']]);const note=el('textarea');note.placeholder='人工复核备注（仅保存在本机）';note.style.width='100%';note.maxLength=3000;
-      const noteId=String(id)+':'+data.code_hash;let saved={};try{saved=JSON.parse(localStorage.getItem(noteKey)||'{}');}catch{}
-      if(saved[noteId]){mark.value=saved[noteId].status;note.value=saved[noteId].note;}
-      const feedback=el('p');detail.append(el('h3','本机人工记录'),mark,note,button('保存本机记录',()=>{try{const all=JSON.parse(localStorage.getItem(noteKey)||'{}');all[noteId]={submission_id:String(id),code_hash:data.code_hash,status:mark.value,note:note.value};localStorage.setItem(noteKey,JSON.stringify(all));feedback.textContent='已保存；可随结果导出，再由 Mac 导入。';}catch{feedback.textContent='保存失败，原记录未覆盖。';}}),feedback);
+      detail.append(el('p','模型判断：有 AI 生成嫌疑'),el('p',r.explanation),el('h3','当前源码'),pre(r.code.split('\n').map((line,i)=>`${i+1}  ${line}`).join('\n')));
+      if(r.previous_submission_id){
+        const a=el('a',`打开前一次提交 ${r.previous_submission_id}`);a.href=`/submission/${r.previous_submission_id}`;a.target='_blank';a.rel='noopener';
+        const previous=el('section');previous.hidden=true;
+        const load=button('加载前版源码进行对比',async()=>{
+          load.disabled=true;previous.hidden=false;previous.replaceChildren(el('p','正在从 OJ 读取前版源码…'));
+          const abort=new AbortController(),timer=setTimeout(()=>abort.abort(),15000);
+          try{const res=await fetch(`/submission/${r.previous_submission_id}`,{credentials:'same-origin',cache:'no-store',signal:abort.signal});if(!res.ok)throw new Error('读取失败');const html=await res.text();if(n!==detailVersion||k!==key())return;
+            const doc=new DOMParser().parseFromString(html,'text/html'),node=doc.querySelector('pre code');if(!node)throw new Error('原站没有返回可读取的源码，请使用提交链接查看');
+            previous.replaceChildren(el('h3',`前版 ${r.previous_submission_id}`),pre(node.textContent.split('\n').map((line,i)=>`${i+1}  ${line}`).join('\n')));
+          }catch(e){if(n===detailVersion)previous.replaceChildren(el('p',e.name==='AbortError'?'前版读取超时':e.message));}finally{clearTimeout(timer);load.disabled=false;}
+        });detail.append(el('h3','前后版本核验'),load,a,previous);
+      }
+      for(const e of r.evidence)detail.append(el('h3',`${e.kind} · 第 ${e.start_line}–${e.end_line} 行`),el('p',e.explanation),pre(e.quote));
+      detail.append(el('p',`模型：${r.model_name}；批次：${r.batch_id}`),el('p',`源码校验：${r.code_hash}`));
+      const mark=el('select');mark.setAttribute('aria-label','人工复核标记');for(const [value,text] of [['retained','保留复核'],['ordinary','普通写法'],['insufficient','信息不足']]){const o=el('option',text);o.value=value;mark.append(o);}
+      const note=el('textarea');note.placeholder='人工复核备注（仅保存在本机）';note.style.width='100%';note.maxLength=3000;
+      const noteId=String(id)+':'+r.code_hash;let saved={};try{saved=JSON.parse(localStorage.getItem(noteKey)||'{}');}catch{}if(saved[noteId]){mark.value=saved[noteId].status;note.value=saved[noteId].note;}
+      const feedback=el('p');detail.append(el('h3','本机人工记录'),mark,note,button('保存本机记录',()=>{try{const all=JSON.parse(localStorage.getItem(noteKey)||'{}');all[noteId]={submission_id:String(id),code_hash:r.code_hash,status:mark.value,note:note.value};localStorage.setItem(noteKey,JSON.stringify(all));feedback.textContent='已保存。';}catch{feedback.textContent='保存失败。';}}),feedback);
       detail.scrollIntoView({block:'start',behavior:'smooth'});
-    }catch(e){if(n===detailVersion&&v===version)detail.replaceChildren(el('p',e.name==='AbortError'?'读取超时':e.message));}finally{clearTimeout(t);if(detailController===c)detailController=null;}
+    }catch(e){if(n===detailVersion)detail.replaceChildren(el('p',e.name==='AbortError'?'读取超时':e.message));}finally{clearTimeout(timeout);}
   }
-  function exportRows(){
-    const c=getContext();let notes={};try{notes=JSON.parse(localStorage.getItem(noteKey)||'{}');}catch{}
-    const data=filtered().map(s=>({submission_id:s.id,name:s.member.name,student_id:s.member.studentId,review:s.review}));
-    const payload={exported_at:new Date().toISOString(),class_name:c.className,reviews:data,annotations:data.map(s=>notes[s.submission_id+':'+s.review.code_hash]).filter(Boolean)};
-    const link=el('a'),url=URL.createObjectURL(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}));link.href=url;link.download='代码复核结果.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  async function exportRows(){
+    const c=getContext(),k=key();if(!c.contest||!c.summary)return;const queryBase=query(c,0,100),abort=new AbortController(),timeout=setTimeout(()=>abort.abort(),60000);
+    try{
+      const all=[];let expected=Infinity;
+      for(let offset=0;offset<expected;offset+=100){const r=await client.search({...queryBase,offset},abort.signal);if(k!==key())return;expected=r.total;all.push(...r.reviews);if(!r.reviews.length)break;}
+      const memberMap=core.members(c.summary.rows);let notes={};try{notes=JSON.parse(localStorage.getItem(noteKey)||'{}');}catch{}
+      const data=all.map(r=>({name:memberMap.get(String(r.creator_id)).name,student_id:memberMap.get(String(r.creator_id)).studentId,review:r}));
+      const payload={exported_at:new Date().toISOString(),class_name:c.className,reviews:data,annotations:all.map(r=>notes[r.submission_id+':'+r.code_hash]).filter(Boolean)};
+      const link=el('a'),url=URL.createObjectURL(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}));link.href=url;link.download='代码复核结果.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    }catch(e){message.textContent='导出失败：'+e.message;}finally{clearTimeout(timeout);}
   }
-  return {reset,openDetail,setActive(value){active=value;if(value)void refresh(true);else stop();}};
+  return {reset,openDetail,setActive(value){active=value;if(value)void refresh();else stop();}};
 }
 
 function mountSubmissionReview(core){
@@ -1399,7 +1372,7 @@ function mountClassManager(core, contestCore, upsolveCore, upsolveReader, review
   </style>
   <button class="launch" type="button">▦ 班级</button>
   <section class="overlay" hidden role="dialog" aria-modal="true" aria-label="班级管理">
-    <div class="shell"><header class="top"><div><div class="eyebrow">ACCODING · CLASSROOM</div><h1>班级</h1><span class="tag">1.9.1</span></div><button data-action="close">← 返回 OJ</button></header>
+    <div class="shell"><header class="top"><div><div class="eyebrow">ACCODING · CLASSROOM</div><h1>班级</h1><span class="tag">1.10.0</span></div><button data-action="close">← 返回 OJ</button></header>
     <div class="toolbar"><div class="row"><select id="class-select" aria-label="选择班级"></select><button data-action="import">＋ 导入名册</button></div><div class="row"><button data-action="rename">重命名</button><button data-action="export">导出名册 CSV</button><button class="danger" data-action="delete">删除班级</button></div></div>
     <div id="message" class="message" role="status" aria-live="polite" hidden></div>
     <section id="import-panel" class="panel" hidden><h2>从 Excel 创建班级</h2><div class="row"><input id="file" type="file" accept=".xlsx" aria-label="选择 XLSX 名册"><label>工作表 <select id="sheet" disabled></select></label><label>班级名称 <input id="class-name" maxlength="80" placeholder="例如：26 秋程设 · 王君臣"></label><button class="primary" data-action="create" disabled>确认创建</button><button data-action="cancel-import">取消</button></div><div id="preview" class="preview"></div></section>
@@ -1446,7 +1419,7 @@ function mountClassManager(core, contestCore, upsolveCore, upsolveReader, review
     prev.disabled = page <= 0; next.disabled = page >= pages - 1;
     target.append(el('span', `共 ${count} 条 · ${page + 1} / ${pages}`, 'muted'), prev, next);
   }
-  const reviewPanel=createAiReviewPanel($('#review-pane'),reviewCore,()=>({classId:currentId,className:selected()?.name,contest,summary,generation}),async(id,signal)=>readJson(`/api/contests/${id}/submissions?latest=0`,signal));
+  const reviewPanel=createAiReviewPanel($('#review-pane'),reviewCore,()=>({classId:currentId,className:selected()?.name,contest,summary,generation}),null);
   function resetContest() {
     reviewPanel.reset();
     generation++; upsolveController?.abort();upsolveController=null;upsolve=null;rankingPage=0;drawStandings();$('#upsolve-time').textContent='';$('[data-action=upsolve]').disabled=true;$('[data-action=cancel-upsolve]').hidden=true;$('#submission-scope').value='contest';for(const o of $('#submission-scope').options)o.disabled=o.value!=='contest';$('#student-problems').hidden=true; rankController?.abort(); subController?.abort(); rankController = subController = null;
