@@ -1223,7 +1223,7 @@ async function readClassXlsx(file) {
 function createAiReviewCore() {
   const api='https://muzermat.online:8443/oj-review-api/v1';
   const states={not_collected:'尚未采集',rules_only:'规则已完成，未运行模型',queued:'排队',running:'处理中',completed:'完成',context_limited:'上下文不足，未运行模型',failed:'失败',stale:'结果过期',cancelled:'已取消'};
-  const signalKinds={scanf_guard:'输入失败防护',explanatory_comments:'讲解注释',numbered_comments:'编号步骤',dialogue_comment:'对答建议',template_comment:'模板／IDE 说明',problem_comment:'题面复述',variable_comment:'普通变量说明',style_change:'版本变化',other:'其他'};
+  const signalKinds={scanf_guard:'输入失败防护',explanatory_comments:'讲解注释',numbered_comments:'编号步骤',dialogue_comment:'对答建议',template_comment:'模板／IDE 说明',problem_comment:'题面复述',variable_comment:'普通变量说明',commented_code:'注释掉的代码',style_change:'版本变化',other:'其他'};
   function classSubmissions(records,members) {
     const ids=new Map(members.filter(m=>m.status==='matched'&&m.userId).map(m=>[String(m.userId),m]));
     return records.filter(s=>/^[1-9]\d*$/.test(String(s.id))&&ids.has(String(s.creator_id??s.creator?.id))).map(s=>({...s,id:String(s.id),member:ids.get(String(s.creator_id??s.creator?.id))}));
@@ -1327,7 +1327,7 @@ function createAiReviewPanel(container,core,getContext,readMetadata,options={}) 
       const returns=[['scanf_minus1','-1'],['scanf_zero','0'],['scanf_one','1']].filter(([key])=>f.features[key]).map(([,v])=>v);
       if(returns.length)detail.append(el('p','scanf 输入失败后立即 return：'+returns.join('、')));
       for(const e of data.evidence)detail.append(el('p',`规则证据 · 第 ${e.start_line}–${e.end_line} 行`),pre(e.evidence));
-      if(data.model_result){const r=data.model_result.result;detail.append(el('h3',data.model_result.inference_performed===false?'未执行模型的原因':'模型解释'));for(const e of r.signals)detail.append(el('p',`${core.signalKinds[e.kind]||'其他'} · ${e.source==='previous'?'前一版本':'当前源码'} · 第 ${e.start_line}–${e.end_line} 行：${e.explanation}`),pre(e.evidence));detail.append(el('h3','替代解释'),pre(r.alternative_explanations.join('\n')||'未提供'),el('h3','缺失上下文'),pre(r.missing_context.join('\n')||'未列出'));}else detail.append(el('p','尚无模型解释。'));
+      if(data.model_result){const r=data.model_result.result;if(data.model_result.citation_method==='source_line_reference')detail.append(el('p','引用原文按模型选择的源码行读取；解释仍需人工核验。'));detail.append(el('h3',data.model_result.inference_performed===false?'未执行模型的原因':'模型解释'));for(const e of r.signals)detail.append(el('p',`${core.signalKinds[e.kind]||'其他'} · ${e.source==='previous'?'前一版本':'当前源码'} · 第 ${e.start_line}–${e.end_line} 行：${e.explanation}`),pre(e.evidence));detail.append(el('h3','替代解释'),pre(r.alternative_explanations.join('\n')||'未提供'),el('h3','缺失上下文'),pre(r.missing_context.join('\n')||'未列出'));}else detail.append(el('p','尚无模型解释。'));
       detail.append(el('p',`规则：${data.rule_version}；源码：${data.code_hash}；模型：${data.model_digest||'未运行'}`),el('p',`样本来源：${data.provenance.join('、')||'普通冻结样本'}`));
       if(data.annotations?.length)detail.append(el('h3','集中人工记录'),pre(JSON.stringify(data.annotations,null,2)));
       const mark=select('人工复核标记',[['retained','保留复核'],['ordinary','普通写法'],['insufficient','信息不足']]);const note=el('textarea');note.placeholder='人工复核备注（仅保存在本机）';note.style.width='100%';note.maxLength=3000;

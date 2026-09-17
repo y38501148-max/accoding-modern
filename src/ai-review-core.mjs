@@ -1,7 +1,7 @@
 export function createAiReviewCore() {
   const api='https://muzermat.online:8443/oj-review-api/v1';
   const states={not_collected:'尚未采集',rules_only:'规则已完成，未运行模型',queued:'排队',running:'处理中',completed:'完成',context_limited:'上下文不足，未运行模型',failed:'失败',stale:'结果过期',cancelled:'已取消'};
-  const signalKinds={scanf_guard:'输入失败防护',explanatory_comments:'讲解注释',numbered_comments:'编号步骤',dialogue_comment:'对答建议',template_comment:'模板／IDE 说明',problem_comment:'题面复述',variable_comment:'普通变量说明',style_change:'版本变化',other:'其他'};
+  const signalKinds={scanf_guard:'输入失败防护',explanatory_comments:'讲解注释',numbered_comments:'编号步骤',dialogue_comment:'对答建议',template_comment:'模板／IDE 说明',problem_comment:'题面复述',variable_comment:'普通变量说明',commented_code:'注释掉的代码',style_change:'版本变化',other:'其他'};
   function classSubmissions(records,members) {
     const ids=new Map(members.filter(m=>m.status==='matched'&&m.userId).map(m=>[String(m.userId),m]));
     return records.filter(s=>/^[1-9]\d*$/.test(String(s.id))&&ids.has(String(s.creator_id??s.creator?.id))).map(s=>({...s,id:String(s.id),member:ids.get(String(s.creator_id??s.creator?.id))}));
