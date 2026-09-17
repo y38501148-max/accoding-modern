@@ -11,7 +11,7 @@ function mountClassManager(core, contestCore, upsolveCore, upsolveReader, review
   </style>
   <button class="launch" type="button">▦ 班级</button>
   <section class="overlay" hidden role="dialog" aria-modal="true" aria-label="班级管理">
-    <div class="shell"><header class="top"><div><div class="eyebrow">ACCODING · CLASSROOM</div><h1>班级</h1><span class="tag">1.8.0</span></div><button data-action="close">← 返回 OJ</button></header>
+    <div class="shell"><header class="top"><div><div class="eyebrow">ACCODING · CLASSROOM</div><h1>班级</h1><span class="tag">1.9.1</span></div><button data-action="close">← 返回 OJ</button></header>
     <div class="toolbar"><div class="row"><select id="class-select" aria-label="选择班级"></select><button data-action="import">＋ 导入名册</button></div><div class="row"><button data-action="rename">重命名</button><button data-action="export">导出名册 CSV</button><button class="danger" data-action="delete">删除班级</button></div></div>
     <div id="message" class="message" role="status" aria-live="polite" hidden></div>
     <section id="import-panel" class="panel" hidden><h2>从 Excel 创建班级</h2><div class="row"><input id="file" type="file" accept=".xlsx" aria-label="选择 XLSX 名册"><label>工作表 <select id="sheet" disabled></select></label><label>班级名称 <input id="class-name" maxlength="80" placeholder="例如：26 秋程设 · 王君臣"></label><button class="primary" data-action="create" disabled>确认创建</button><button data-action="cancel-import">取消</button></div><div id="preview" class="preview"></div></section>

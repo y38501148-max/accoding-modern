@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Accoding Modern · 北航 OJ 管理界面
 // @namespace    local.accoding.modern
-// @version      1.9.0
+// @version      1.9.1
 // @description  界面美化、班级名册、页内代码复核、独立补题排行榜与提交查看、赛事统计看板、Markdown 兼容编辑与批量测试点选择，保留原站登录和操作。
 // @include      https://accoding.buaa.edu.cn:4000/*
 // @run-at       document-end
@@ -1224,6 +1224,12 @@ function createAiReviewCore() {
   const api='https://muzermat.online:8443/oj-review-api/v1';
   const states={not_collected:'尚未采集',rules_only:'规则已完成，未运行模型',waiting_model:'已选入批次，待调度',queued:'排队',running:'处理中',completed:'完成',context_limited:'上下文不足，未运行模型',failed:'失败',stale:'结果过期',cancelled:'已取消'};
   function viewState(review){return review.batch?.selection==='rules_only'?'rules_only':review.state;}
+  const priorities={review:'需要复核',priority:'优先复核'};
+  function reviewPriority(review){return review.review_priority??review.model_result?.result?.review_priority;}
+  function hasFlaggedReview(review){
+    const performed=review.inference_performed??(review.model_result?review.model_result.inference_performed!==false:false);
+    return review.state==='completed'&&performed===true&&Object.hasOwn(priorities,reviewPriority(review));
+  }
   const selections={candidate:'候选复核',sample:'未命中抽样',rules_only:'仅规则检查'};
   function coverage(reviews){
     const counts={total:reviews.length,rules:0,candidate:0,sample:0,rules_only:0,unbatched:0,model:{},batches:[]};
@@ -1264,7 +1270,7 @@ function createAiReviewCore() {
         return ids.map(id=>found.get(String(id)));
       }};
   }
-  return {api,states,selections,coverage,viewState,signalKinds,classSubmissions,batches,client};
+  return {api,states,selections,coverage,viewState,priorities,reviewPriority,hasFlaggedReview,signalKinds,classSubmissions,batches,client};
 }
 
 function createAiReviewPanel(container,core,getContext,readMetadata,options={}) {
@@ -1275,10 +1281,10 @@ function createAiReviewPanel(container,core,getContext,readMetadata,options={}) 
   const el=(tag,text)=>{const n=document.createElement(tag);if(text!=null)n.textContent=String(text);return n;};
   const button=(text,fn)=>{const b=el('button',text);b.type='button';b.onclick=fn;return b;};
   const select=(label,options)=>{const s=el('select');s.setAttribute('aria-label',label);for(const [value,text] of options){const o=el('option',text);o.value=value;s.append(o);}s.onchange=()=>{page=0;draw();};return s;};
-  const heading=el('h2','代码复核'),help=el('p','展示当前班级提交的代码特征，供人工核验。风格和规则命中不能单独判定 AI 来源；未命中也不代表已经运行模型。');help.className='muted';
+  const heading=el('h2','代码复核');
   const controls=el('div');controls.className='row';
-  const status=select('复核处理状态',[['all','全部状态'],...Object.entries(core.states)]);
-  const selection=select('批次选入方式',[['all','全部选入方式'],...Object.entries(core.selections),['unbatched','未纳入批次']]);
+  const selections={candidate:'候选复核',sample:'未命中抽样',rules_only:'此前复核',unbatched:'单独复核'};
+  const selection=select('批次选入方式',[['all','全部复核来源'],...Object.entries(selections)]);
   const feature=select('代码特征',[['all','全部特征'],['any','有规则标签'],['注释','注释'],['scanf','scanf 防护'],['短时','短时大改']]);
   const problem=select('复核题目',[['all','全部题目']]);
   const config=el('details');config.append(el('summary','复核设置'));
@@ -1289,9 +1295,9 @@ function createAiReviewPanel(container,core,getContext,readMetadata,options={}) 
   const coverage=el('p');coverage.setAttribute('aria-live','polite');
   const list=el('div');list.className='table-wrap';const pager=el('div');pager.className='pager';
   const detail=el('section');detail.className='panel';detail.hidden=true;
-  controls.append(problem,feature,selection,status,button('刷新结果',()=>options.submissionId?void openDetail(options.submissionId):void refresh(true)),button('导出当前结果',exportRows));
-  container.append(heading,help,config,controls,message,coverage,list,pager,detail);
-  if(options.submissionId){problem.hidden=feature.hidden=selection.hidden=status.hidden=coverage.hidden=message.hidden=list.hidden=pager.hidden=true;controls.lastChild.hidden=true;}
+  controls.append(problem,feature,selection,button('刷新结果',()=>options.submissionId?void openDetail(options.submissionId):void refresh(true)),button('导出当前结果',exportRows));
+  container.append(heading,config,controls,message,coverage,list,pager,detail);
+  if(options.submissionId){problem.hidden=feature.hidden=selection.hidden=coverage.hidden=message.hidden=list.hidden=pager.hidden=true;controls.lastChild.hidden=true;}
   function contextKey(){const c=getContext();return `${c.classId||''}:${c.contest?.id||''}:${c.generation}`;}
   function stop(){version++;detailVersion++;controller?.abort();controller=null;detailController?.abort();detailController=null;clearTimeout(timer);timer=null;}
   function reset(){stop();rows=[];page=0;detail.hidden=true;detail.replaceChildren();list.replaceChildren();pager.replaceChildren();coverage.textContent='';message.textContent='读取比赛后，打开代码复核。';}
@@ -1308,20 +1314,20 @@ function createAiReviewPanel(container,core,getContext,readMetadata,options={}) 
       if(v!==version||key!==contextKey())return;
       rows=records.map((s,i)=>({...s,review:results[i]})).sort((a,b)=>Date.parse(b.created_at)-Date.parse(a.created_at)||Number(b.id)-Number(a.id));
       const previous=problem.value;problem.replaceChildren();for(const [value,text] of [['all','全部题目'],...c.contest.problems.map(p=>[String(p.id),`${p.label} · ${p.title}`])]){const o=el('option',text);o.value=value;problem.append(o);}problem.value=[...problem.options].some(o=>o.value===previous)?previous:'all';
-      message.textContent=`${c.className} · ${rows.length} 条提交；${c.summary.rows.filter(m=>m.status!=='matched').length} 位同学待核对匹配。刷新仅查询已有结果。`;
+      message.textContent=`${c.className} · 模型标记需复核 ${rows.filter(s=>core.hasFlaggedReview(s.review)).length} 条提交。`;
       draw();if(rows.some(s=>['waiting_model','queued','running'].includes(s.review.state)))timer=setTimeout(()=>void refresh(),30000);
     }catch(e){if(v===version){rows=[];draw();message.textContent=e.name==='AbortError'?'读取超时，请刷新重试。':e.message;}}
     finally{clearTimeout(timeout);if(controller===current)controller=null;}
   }
-  function filtered(){return rows.filter(s=>(problem.value==='all'||String(s.problem_id)===problem.value)&&(selection.value==='all'||(s.review.batch?.selection||'unbatched')===selection.value)&&(status.value==='all'||core.viewState(s.review)===status.value)&&(feature.value==='all'||(feature.value==='any'?s.review.labels.length>0:s.review.labels.some(x=>x.includes(feature.value)))));}
+  function filtered(){return rows.filter(s=>core.hasFlaggedReview(s.review)&&(problem.value==='all'||String(s.problem_id)===problem.value)&&(selection.value==='all'||(s.review.batch?.selection||'unbatched')===selection.value)&&(feature.value==='all'||(feature.value==='any'?s.review.labels.length>0:s.review.labels.some(x=>x.includes(feature.value)))));}
   function draw(){
-    const covered=core.coverage(rows.map(s=>s.review));
-    coverage.textContent=rows.length?`当前班级：规则已检查 ${covered.rules} / ${covered.total}；候选 ${covered.candidate}；抽样 ${covered.sample}；仅规则 ${covered.rules_only}；未纳入批次 ${covered.unbatched}。本批模型：${Object.entries(covered.model).map(([k,n])=>`${core.states[k]||k} ${n}`).join('，')||'无选中任务'}。`+(covered.batches.length?` 批次：${covered.batches.map(b=>b.name).join('、')}`:''):'';
+    const covered=core.coverage(rows.filter(s=>core.hasFlaggedReview(s.review)).map(s=>s.review));
+    coverage.textContent=covered.total?`候选复核 ${covered.candidate}；未命中抽样 ${covered.sample}；此前复核 ${covered.rules_only}；单独复核 ${covered.unbatched}。`:'';
     const shown=filtered();page=Math.min(page,Math.max(0,Math.ceil(shown.length/30)-1));
-    const table=el('table'),thead=el('thead'),head=el('tr');['提交','学生','题目','提交时间','规则标签','本批选入','处理状态','详情'].forEach(t=>head.append(el('th',t)));thead.append(head);table.append(thead);
+    const table=el('table'),thead=el('thead'),head=el('tr');['提交','学生','题目','提交时间','模型判断','规则标签','复核来源','详情'].forEach(t=>head.append(el('th',t)));thead.append(head);table.append(thead);
     const body=el('tbody');for(const s of shown.slice(page*30,page*30+30)){
       const p=getContext().contest?.problems.find(p=>String(p.id)===String(s.problem_id));const tr=el('tr');
-      for(const text of [s.id,`${s.member.name} · ${s.member.studentId}`,p?`${p.label} · ${p.title}`:s.problem_id,new Date(s.created_at).toLocaleString(),s.review.labels.join('；')||'无规则标签',core.selections[s.review.batch?.selection]||'未纳入批次',core.states[core.viewState(s.review)]||core.viewState(s.review)])tr.append(el('td',text));
+      for(const text of [s.id,`${s.member.name} · ${s.member.studentId}`,p?`${p.label} · ${p.title}`:s.problem_id,new Date(s.created_at).toLocaleString(),core.priorities[core.reviewPriority(s.review)],s.review.labels.join('；')||'无规则标签',selections[s.review.batch?.selection||'unbatched']])tr.append(el('td',text));
       const td=el('td');td.append(button('查看复核',()=>void openDetail(s.id)));tr.append(td);body.append(tr);
     }table.append(body);list.replaceChildren(table);pager.replaceChildren(el('span',`共 ${shown.length} 条 · ${page+1} / ${Math.max(1,Math.ceil(shown.length/30))}`));
     const prev=button('上一页',()=>{page--;draw();}),next=button('下一页',()=>{page++;draw();});prev.disabled=page<=0;next.disabled=(page+1)*30>=shown.length;pager.append(prev,next);
@@ -1331,11 +1337,13 @@ function createAiReviewPanel(container,core,getContext,readMetadata,options={}) 
     detailController?.abort();const c=new AbortController(),t=setTimeout(()=>c.abort(),20000);detailController=c;
     try{
       const data=await client.detail(String(id),c.signal);if(n!==detailVersion||v!==version||key!==contextKey())return;
-      detail.replaceChildren(button('收起详情',()=>{detailVersion++;detail.hidden=true;}),el('h3',`提交 ${id} · ${core.states[data.state]||data.state}`));
-      if(!data.data_exists){detail.append(el('p','尚未采集此提交。需要当前 Mac 导入后才能查询。'));return;}
+      detail.replaceChildren(button('收起详情',()=>{detailVersion++;detail.hidden=true;}),el('h3',`提交 ${id}`));
+      if(!core.hasFlaggedReview(data)||!data.model_result){detail.append(el('p','暂无模型标记需复核的结果。'));return;}
+      detail.append(el('p',`模型判断：${core.priorities[core.reviewPriority(data)]}`));
       const pre=text=>{const p=el('pre',text);p.style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;background:#f4f7fb;padding:14px;max-height:500px;overflow:auto';return p;};
       const source=(title,s)=>{if(!s)return;detail.append(el('h3',title),pre(s.code.split('\n').map((line,i)=>`${i+1}  ${line}`).join('\n')));};
       if(data.batch)detail.append(el('p',`整场批次：${data.batch.batch_name}；${core.selections[data.batch.selection]}；本批状态：${core.states[data.batch.state]||data.batch.state}${data.batch.reused?'；复用相同上下文任务':''}${data.batch.feeder_state==='paused'?'；批次已暂停补入任务':''}`));
+      if(data.batch?.sample_pair)detail.append(el('p',`成对抽样：${data.batch.sample_pair.previous_id} → ${data.batch.sample_pair.current_id}`));
       source('当前源码',data.source);source('前一版本',data.previous);
       if(data.revision)detail.append(el('h3','版本变化'),el('p',`${data.revision.seconds} 秒间隔；新增 ${data.revision.added_tokens} token，删除 ${data.revision.removed_tokens} token，改动比例 ${(data.revision.change_ratio*100).toFixed(1)}%`),pre(data.revision.diff));
       detail.append(el('h3','规则事实'),el('p',data.labels.join('；')||'未命中当前规则标签。'));
@@ -1391,7 +1399,7 @@ function mountClassManager(core, contestCore, upsolveCore, upsolveReader, review
   </style>
   <button class="launch" type="button">▦ 班级</button>
   <section class="overlay" hidden role="dialog" aria-modal="true" aria-label="班级管理">
-    <div class="shell"><header class="top"><div><div class="eyebrow">ACCODING · CLASSROOM</div><h1>班级</h1><span class="tag">1.8.0</span></div><button data-action="close">← 返回 OJ</button></header>
+    <div class="shell"><header class="top"><div><div class="eyebrow">ACCODING · CLASSROOM</div><h1>班级</h1><span class="tag">1.9.1</span></div><button data-action="close">← 返回 OJ</button></header>
     <div class="toolbar"><div class="row"><select id="class-select" aria-label="选择班级"></select><button data-action="import">＋ 导入名册</button></div><div class="row"><button data-action="rename">重命名</button><button data-action="export">导出名册 CSV</button><button class="danger" data-action="delete">删除班级</button></div></div>
     <div id="message" class="message" role="status" aria-live="polite" hidden></div>
     <section id="import-panel" class="panel" hidden><h2>从 Excel 创建班级</h2><div class="row"><input id="file" type="file" accept=".xlsx" aria-label="选择 XLSX 名册"><label>工作表 <select id="sheet" disabled></select></label><label>班级名称 <input id="class-name" maxlength="80" placeholder="例如：26 秋程设 · 王君臣"></label><button class="primary" data-action="create" disabled>确认创建</button><button data-action="cancel-import">取消</button></div><div id="preview" class="preview"></div></section>

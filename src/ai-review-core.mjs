@@ -2,6 +2,12 @@ export function createAiReviewCore() {
   const api='https://muzermat.online:8443/oj-review-api/v1';
   const states={not_collected:'尚未采集',rules_only:'规则已完成，未运行模型',waiting_model:'已选入批次，待调度',queued:'排队',running:'处理中',completed:'完成',context_limited:'上下文不足，未运行模型',failed:'失败',stale:'结果过期',cancelled:'已取消'};
   function viewState(review){return review.batch?.selection==='rules_only'?'rules_only':review.state;}
+  const priorities={review:'需要复核',priority:'优先复核'};
+  function reviewPriority(review){return review.review_priority??review.model_result?.result?.review_priority;}
+  function hasFlaggedReview(review){
+    const performed=review.inference_performed??(review.model_result?review.model_result.inference_performed!==false:false);
+    return review.state==='completed'&&performed===true&&Object.hasOwn(priorities,reviewPriority(review));
+  }
   const selections={candidate:'候选复核',sample:'未命中抽样',rules_only:'仅规则检查'};
   function coverage(reviews){
     const counts={total:reviews.length,rules:0,candidate:0,sample:0,rules_only:0,unbatched:0,model:{},batches:[]};
@@ -42,5 +48,5 @@ export function createAiReviewCore() {
         return ids.map(id=>found.get(String(id)));
       }};
   }
-  return {api,states,selections,coverage,viewState,signalKinds,classSubmissions,batches,client};
+  return {api,states,selections,coverage,viewState,priorities,reviewPriority,hasFlaggedReview,signalKinds,classSubmissions,batches,client};
 }

@@ -2,6 +2,18 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createAiReviewCore} from '../src/ai-review-core.mjs';
 const core=createAiReviewCore();
+test('only completed inference explicitly flagged by the model is visible',()=>{
+  const base={state:'completed',inference_performed:true,review_priority:'review'};
+  assert.equal(core.hasFlaggedReview(base),true);
+  assert.equal(core.hasFlaggedReview({...base,review_priority:'priority'}),true);
+  for(const review_priority of ['normal','insufficient_context',null,undefined])assert.equal(core.hasFlaggedReview({...base,review_priority}),false);
+  for(const state of Object.keys(core.states).filter(s=>s!=='completed'))assert.equal(core.hasFlaggedReview({...base,state}),false);
+  assert.equal(core.hasFlaggedReview({...base,inference_performed:false}),false);
+  assert.equal(core.hasFlaggedReview({state:'completed',review_priority:'review'}),false);
+  assert.equal(core.hasFlaggedReview({...base,batch:{selection:'rules_only'}}),true);
+  assert.equal(core.hasFlaggedReview({state:'completed',model_result:{inference_performed:true,result:{review_priority:'priority'}}}),true);
+  assert.equal(core.hasFlaggedReview({state:'completed',model_result:{inference_performed:true,result:{review_priority:'normal',signals:[{kind:'dialogue_comment'}]}}}),false);
+});
 test('only uniquely matched members contribute submissions',()=>{
   const members=[{status:'matched',userId:'11',name:'A'},{status:'ambiguous',userId:'22',name:'B'},{status:'missing',name:'C'}];
   const records=[{id:1,creator_id:11},{id:2,creator_id:22},{id:3,creator_id:33},{id:'bad',creator_id:11}];
