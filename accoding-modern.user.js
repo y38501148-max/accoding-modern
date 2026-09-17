@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Accoding Modern · 北航 OJ 管理界面
 // @namespace    local.accoding.modern
-// @version      1.8.0
+// @version      1.9.0
 // @description  界面美化、班级名册、页内代码复核、独立补题排行榜与提交查看、赛事统计看板、Markdown 兼容编辑与批量测试点选择，保留原站登录和操作。
 // @include      https://accoding.buaa.edu.cn:4000/*
 // @run-at       document-end
@@ -1222,7 +1222,20 @@ async function readClassXlsx(file) {
 
 function createAiReviewCore() {
   const api='https://muzermat.online:8443/oj-review-api/v1';
-  const states={not_collected:'尚未采集',rules_only:'规则已完成，未运行模型',queued:'排队',running:'处理中',completed:'完成',context_limited:'上下文不足，未运行模型',failed:'失败',stale:'结果过期',cancelled:'已取消'};
+  const states={not_collected:'尚未采集',rules_only:'规则已完成，未运行模型',waiting_model:'已选入批次，待调度',queued:'排队',running:'处理中',completed:'完成',context_limited:'上下文不足，未运行模型',failed:'失败',stale:'结果过期',cancelled:'已取消'};
+  function viewState(review){return review.batch?.selection==='rules_only'?'rules_only':review.state;}
+  const selections={candidate:'候选复核',sample:'未命中抽样',rules_only:'仅规则检查'};
+  function coverage(reviews){
+    const counts={total:reviews.length,rules:0,candidate:0,sample:0,rules_only:0,unbatched:0,model:{},batches:[]};
+    const ids=new Map();
+    for(const r of reviews){
+      if(r.data_exists)counts.rules++;
+      if(!r.batch){counts.unbatched++;continue;}
+      counts[r.batch.selection]++;ids.set(r.batch.batch_id,r.batch.batch_name);
+      if(r.batch.selection!=='rules_only'){const state=r.state==='stale'?'stale':r.batch.state;counts.model[state]=(counts.model[state]||0)+1;}
+    }
+    counts.batches=[...ids].map(([id,name])=>({id,name}));return counts;
+  }
   const signalKinds={scanf_guard:'输入失败防护',explanatory_comments:'讲解注释',numbered_comments:'编号步骤',dialogue_comment:'对答建议',template_comment:'模板／IDE 说明',problem_comment:'题面复述',variable_comment:'普通变量说明',commented_code:'注释掉的代码',style_change:'版本变化',other:'其他'};
   function classSubmissions(records,members) {
     const ids=new Map(members.filter(m=>m.status==='matched'&&m.userId).map(m=>[String(m.userId),m]));
@@ -1251,7 +1264,7 @@ function createAiReviewCore() {
         return ids.map(id=>found.get(String(id)));
       }};
   }
-  return {api,states,signalKinds,classSubmissions,batches,client};
+  return {api,states,selections,coverage,viewState,signalKinds,classSubmissions,batches,client};
 }
 
 function createAiReviewPanel(container,core,getContext,readMetadata,options={}) {
@@ -1265,6 +1278,7 @@ function createAiReviewPanel(container,core,getContext,readMetadata,options={}) 
   const heading=el('h2','代码复核'),help=el('p','展示当前班级提交的代码特征，供人工核验。风格和规则命中不能单独判定 AI 来源；未命中也不代表已经运行模型。');help.className='muted';
   const controls=el('div');controls.className='row';
   const status=select('复核处理状态',[['all','全部状态'],...Object.entries(core.states)]);
+  const selection=select('批次选入方式',[['all','全部选入方式'],...Object.entries(core.selections),['unbatched','未纳入批次']]);
   const feature=select('代码特征',[['all','全部特征'],['any','有规则标签'],['注释','注释'],['scanf','scanf 防护'],['短时','短时大改']]);
   const problem=select('复核题目',[['all','全部题目']]);
   const config=el('details');config.append(el('summary','复核设置'));
@@ -1272,14 +1286,15 @@ function createAiReviewPanel(container,core,getContext,readMetadata,options={}) 
   const settingStatus=el('span');
   config.append(el('p',core.api),password,button('保存令牌',()=>{try{localStorage.setItem(configKey,JSON.stringify({token:password.value.trim()}));token=password.value.trim();client.clear();settingStatus.textContent='已保存到当前浏览器。';if(options.submissionId)void openDetail(options.submissionId);else if(active)void refresh(true);}catch{settingStatus.textContent='保存失败，请检查浏览器存储权限。';}}),button('清除令牌',()=>{localStorage.removeItem(configKey);token=password.value='';client.clear();stop();rows=[];detail.replaceChildren();draw();settingStatus.textContent='已清除。';}),settingStatus);
   const message=el('p','读取比赛后，打开代码复核。');message.setAttribute('role','status');
+  const coverage=el('p');coverage.setAttribute('aria-live','polite');
   const list=el('div');list.className='table-wrap';const pager=el('div');pager.className='pager';
   const detail=el('section');detail.className='panel';detail.hidden=true;
-  controls.append(problem,feature,status,button('刷新结果',()=>options.submissionId?void openDetail(options.submissionId):void refresh(true)),button('导出当前结果',exportRows));
-  container.append(heading,help,config,controls,message,list,pager,detail);
-  if(options.submissionId){problem.hidden=feature.hidden=status.hidden=message.hidden=list.hidden=pager.hidden=true;controls.lastChild.hidden=true;}
+  controls.append(problem,feature,selection,status,button('刷新结果',()=>options.submissionId?void openDetail(options.submissionId):void refresh(true)),button('导出当前结果',exportRows));
+  container.append(heading,help,config,controls,message,coverage,list,pager,detail);
+  if(options.submissionId){problem.hidden=feature.hidden=selection.hidden=status.hidden=coverage.hidden=message.hidden=list.hidden=pager.hidden=true;controls.lastChild.hidden=true;}
   function contextKey(){const c=getContext();return `${c.classId||''}:${c.contest?.id||''}:${c.generation}`;}
   function stop(){version++;detailVersion++;controller?.abort();controller=null;detailController?.abort();detailController=null;clearTimeout(timer);timer=null;}
-  function reset(){stop();rows=[];page=0;detail.hidden=true;detail.replaceChildren();list.replaceChildren();pager.replaceChildren();message.textContent='读取比赛后，打开代码复核。';}
+  function reset(){stop();rows=[];page=0;detail.hidden=true;detail.replaceChildren();list.replaceChildren();pager.replaceChildren();coverage.textContent='';message.textContent='读取比赛后，打开代码复核。';}
   async function refresh(force=false){
     stop();const v=version,key=contextKey(),c=getContext();detail.hidden=true;detail.replaceChildren();
     if(!active||!c.contest||!c.summary){message.textContent='请先读取比赛和榜单，再查看当前班级的代码复核。';return;}
@@ -1294,17 +1309,19 @@ function createAiReviewPanel(container,core,getContext,readMetadata,options={}) 
       rows=records.map((s,i)=>({...s,review:results[i]})).sort((a,b)=>Date.parse(b.created_at)-Date.parse(a.created_at)||Number(b.id)-Number(a.id));
       const previous=problem.value;problem.replaceChildren();for(const [value,text] of [['all','全部题目'],...c.contest.problems.map(p=>[String(p.id),`${p.label} · ${p.title}`])]){const o=el('option',text);o.value=value;problem.append(o);}problem.value=[...problem.options].some(o=>o.value===previous)?previous:'all';
       message.textContent=`${c.className} · ${rows.length} 条提交；${c.summary.rows.filter(m=>m.status!=='matched').length} 位同学待核对匹配。刷新仅查询已有结果。`;
-      draw();if(rows.some(s=>['queued','running'].includes(s.review.state)))timer=setTimeout(()=>void refresh(),30000);
+      draw();if(rows.some(s=>['waiting_model','queued','running'].includes(s.review.state)))timer=setTimeout(()=>void refresh(),30000);
     }catch(e){if(v===version){rows=[];draw();message.textContent=e.name==='AbortError'?'读取超时，请刷新重试。':e.message;}}
     finally{clearTimeout(timeout);if(controller===current)controller=null;}
   }
-  function filtered(){return rows.filter(s=>(problem.value==='all'||String(s.problem_id)===problem.value)&&(status.value==='all'||s.review.state===status.value)&&(feature.value==='all'||(feature.value==='any'?s.review.labels.length>0:s.review.labels.some(x=>x.includes(feature.value)))));}
+  function filtered(){return rows.filter(s=>(problem.value==='all'||String(s.problem_id)===problem.value)&&(selection.value==='all'||(s.review.batch?.selection||'unbatched')===selection.value)&&(status.value==='all'||core.viewState(s.review)===status.value)&&(feature.value==='all'||(feature.value==='any'?s.review.labels.length>0:s.review.labels.some(x=>x.includes(feature.value)))));}
   function draw(){
+    const covered=core.coverage(rows.map(s=>s.review));
+    coverage.textContent=rows.length?`当前班级：规则已检查 ${covered.rules} / ${covered.total}；候选 ${covered.candidate}；抽样 ${covered.sample}；仅规则 ${covered.rules_only}；未纳入批次 ${covered.unbatched}。本批模型：${Object.entries(covered.model).map(([k,n])=>`${core.states[k]||k} ${n}`).join('，')||'无选中任务'}。`+(covered.batches.length?` 批次：${covered.batches.map(b=>b.name).join('、')}`:''):'';
     const shown=filtered();page=Math.min(page,Math.max(0,Math.ceil(shown.length/30)-1));
-    const table=el('table'),thead=el('thead'),head=el('tr');['提交','学生','题目','提交时间','规则标签','处理状态','详情'].forEach(t=>head.append(el('th',t)));thead.append(head);table.append(thead);
+    const table=el('table'),thead=el('thead'),head=el('tr');['提交','学生','题目','提交时间','规则标签','本批选入','处理状态','详情'].forEach(t=>head.append(el('th',t)));thead.append(head);table.append(thead);
     const body=el('tbody');for(const s of shown.slice(page*30,page*30+30)){
       const p=getContext().contest?.problems.find(p=>String(p.id)===String(s.problem_id));const tr=el('tr');
-      for(const text of [s.id,`${s.member.name} · ${s.member.studentId}`,p?`${p.label} · ${p.title}`:s.problem_id,new Date(s.created_at).toLocaleString(),s.review.labels.join('；')||'无规则标签',core.states[s.review.state]||s.review.state])tr.append(el('td',text));
+      for(const text of [s.id,`${s.member.name} · ${s.member.studentId}`,p?`${p.label} · ${p.title}`:s.problem_id,new Date(s.created_at).toLocaleString(),s.review.labels.join('；')||'无规则标签',core.selections[s.review.batch?.selection]||'未纳入批次',core.states[core.viewState(s.review)]||core.viewState(s.review)])tr.append(el('td',text));
       const td=el('td');td.append(button('查看复核',()=>void openDetail(s.id)));tr.append(td);body.append(tr);
     }table.append(body);list.replaceChildren(table);pager.replaceChildren(el('span',`共 ${shown.length} 条 · ${page+1} / ${Math.max(1,Math.ceil(shown.length/30))}`));
     const prev=button('上一页',()=>{page--;draw();}),next=button('下一页',()=>{page++;draw();});prev.disabled=page<=0;next.disabled=(page+1)*30>=shown.length;pager.append(prev,next);
@@ -1318,6 +1335,7 @@ function createAiReviewPanel(container,core,getContext,readMetadata,options={}) 
       if(!data.data_exists){detail.append(el('p','尚未采集此提交。需要当前 Mac 导入后才能查询。'));return;}
       const pre=text=>{const p=el('pre',text);p.style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;background:#f4f7fb;padding:14px;max-height:500px;overflow:auto';return p;};
       const source=(title,s)=>{if(!s)return;detail.append(el('h3',title),pre(s.code.split('\n').map((line,i)=>`${i+1}  ${line}`).join('\n')));};
+      if(data.batch)detail.append(el('p',`整场批次：${data.batch.batch_name}；${core.selections[data.batch.selection]}；本批状态：${core.states[data.batch.state]||data.batch.state}${data.batch.reused?'；复用相同上下文任务':''}${data.batch.feeder_state==='paused'?'；批次已暂停补入任务':''}`));
       source('当前源码',data.source);source('前一版本',data.previous);
       if(data.revision)detail.append(el('h3','版本变化'),el('p',`${data.revision.seconds} 秒间隔；新增 ${data.revision.added_tokens} token，删除 ${data.revision.removed_tokens} token，改动比例 ${(data.revision.change_ratio*100).toFixed(1)}%`),pre(data.revision.diff));
       detail.append(el('h3','规则事实'),el('p',data.labels.join('；')||'未命中当前规则标签。'));
@@ -1327,7 +1345,7 @@ function createAiReviewPanel(container,core,getContext,readMetadata,options={}) 
       const returns=[['scanf_minus1','-1'],['scanf_zero','0'],['scanf_one','1']].filter(([key])=>f.features[key]).map(([,v])=>v);
       if(returns.length)detail.append(el('p','scanf 输入失败后立即 return：'+returns.join('、')));
       for(const e of data.evidence)detail.append(el('p',`规则证据 · 第 ${e.start_line}–${e.end_line} 行`),pre(e.evidence));
-      if(data.model_result){const r=data.model_result.result;if(data.model_result.citation_method==='source_line_reference')detail.append(el('p','引用原文按模型选择的源码行读取；解释仍需人工核验。'));detail.append(el('h3',data.model_result.inference_performed===false?'未执行模型的原因':'模型解释'));for(const e of r.signals)detail.append(el('p',`${core.signalKinds[e.kind]||'其他'} · ${e.source==='previous'?'前一版本':'当前源码'} · 第 ${e.start_line}–${e.end_line} 行：${e.explanation}`),pre(e.evidence));detail.append(el('h3','替代解释'),pre(r.alternative_explanations.join('\n')||'未提供'),el('h3','缺失上下文'),pre(r.missing_context.join('\n')||'未列出'));}else detail.append(el('p','尚无模型解释。'));
+      if(data.model_result){const r=data.model_result.result;if(data.model_result.citation_method==='source_line_reference')detail.append(el('p','引用原文按模型选择的源码行读取；解释仍需人工核验。'));detail.append(el('h3',data.model_result.inference_performed===false?'未执行模型的原因':data.batch?.selection==='rules_only'?'此前模型解释（不计入本批覆盖）':'模型解释'));for(const e of r.signals)detail.append(el('p',`${core.signalKinds[e.kind]||'其他'} · ${e.source==='previous'?'前一版本':'当前源码'} · 第 ${e.start_line}–${e.end_line} 行：${e.explanation}`),pre(e.evidence));detail.append(el('h3','替代解释'),pre(r.alternative_explanations.join('\n')||'未提供'),el('h3','缺失上下文'),pre(r.missing_context.join('\n')||'未列出'));}else detail.append(el('p','尚无模型解释。'));
       detail.append(el('p',`规则：${data.rule_version}；源码：${data.code_hash}；模型：${data.model_digest||'未运行'}`),el('p',`样本来源：${data.provenance.join('、')||'普通冻结样本'}`));
       if(data.annotations?.length)detail.append(el('h3','集中人工记录'),pre(JSON.stringify(data.annotations,null,2)));
       const mark=select('人工复核标记',[['retained','保留复核'],['ordinary','普通写法'],['insufficient','信息不足']]);const note=el('textarea');note.placeholder='人工复核备注（仅保存在本机）';note.style.width='100%';note.maxLength=3000;

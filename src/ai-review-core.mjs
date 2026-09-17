@@ -1,6 +1,19 @@
 export function createAiReviewCore() {
   const api='https://muzermat.online:8443/oj-review-api/v1';
-  const states={not_collected:'尚未采集',rules_only:'规则已完成，未运行模型',queued:'排队',running:'处理中',completed:'完成',context_limited:'上下文不足，未运行模型',failed:'失败',stale:'结果过期',cancelled:'已取消'};
+  const states={not_collected:'尚未采集',rules_only:'规则已完成，未运行模型',waiting_model:'已选入批次，待调度',queued:'排队',running:'处理中',completed:'完成',context_limited:'上下文不足，未运行模型',failed:'失败',stale:'结果过期',cancelled:'已取消'};
+  function viewState(review){return review.batch?.selection==='rules_only'?'rules_only':review.state;}
+  const selections={candidate:'候选复核',sample:'未命中抽样',rules_only:'仅规则检查'};
+  function coverage(reviews){
+    const counts={total:reviews.length,rules:0,candidate:0,sample:0,rules_only:0,unbatched:0,model:{},batches:[]};
+    const ids=new Map();
+    for(const r of reviews){
+      if(r.data_exists)counts.rules++;
+      if(!r.batch){counts.unbatched++;continue;}
+      counts[r.batch.selection]++;ids.set(r.batch.batch_id,r.batch.batch_name);
+      if(r.batch.selection!=='rules_only'){const state=r.state==='stale'?'stale':r.batch.state;counts.model[state]=(counts.model[state]||0)+1;}
+    }
+    counts.batches=[...ids].map(([id,name])=>({id,name}));return counts;
+  }
   const signalKinds={scanf_guard:'输入失败防护',explanatory_comments:'讲解注释',numbered_comments:'编号步骤',dialogue_comment:'对答建议',template_comment:'模板／IDE 说明',problem_comment:'题面复述',variable_comment:'普通变量说明',commented_code:'注释掉的代码',style_change:'版本变化',other:'其他'};
   function classSubmissions(records,members) {
     const ids=new Map(members.filter(m=>m.status==='matched'&&m.userId).map(m=>[String(m.userId),m]));
@@ -29,5 +42,5 @@ export function createAiReviewCore() {
         return ids.map(id=>found.get(String(id)));
       }};
   }
-  return {api,states,signalKinds,classSubmissions,batches,client};
+  return {api,states,selections,coverage,viewState,signalKinds,classSubmissions,batches,client};
 }
