@@ -1,4 +1,4 @@
-function mountClassManager(core, contestCore, upsolveCore, upsolveReader) {
+function mountClassManager(core, contestCore, upsolveCore, upsolveReader, reviewCore) {
   if (document.getElementById('am-classes')) return;
   const host = document.createElement('div'); host.id = 'am-classes'; document.body.append(host);
   const root = host.attachShadow({mode: 'open'});
@@ -11,12 +11,12 @@ function mountClassManager(core, contestCore, upsolveCore, upsolveReader) {
   </style>
   <button class="launch" type="button">▦ 班级</button>
   <section class="overlay" hidden role="dialog" aria-modal="true" aria-label="班级管理">
-    <div class="shell"><header class="top"><div><div class="eyebrow">ACCODING · CLASSROOM</div><h1>班级</h1><span class="tag">1.7.0</span></div><button data-action="close">← 返回 OJ</button></header>
+    <div class="shell"><header class="top"><div><div class="eyebrow">ACCODING · CLASSROOM</div><h1>班级</h1><span class="tag">1.8.0</span></div><button data-action="close">← 返回 OJ</button></header>
     <div class="toolbar"><div class="row"><select id="class-select" aria-label="选择班级"></select><button data-action="import">＋ 导入名册</button></div><div class="row"><button data-action="rename">重命名</button><button data-action="export">导出名册 CSV</button><button class="danger" data-action="delete">删除班级</button></div></div>
     <div id="message" class="message" role="status" aria-live="polite" hidden></div>
     <section id="import-panel" class="panel" hidden><h2>从 Excel 创建班级</h2><div class="row"><input id="file" type="file" accept=".xlsx" aria-label="选择 XLSX 名册"><label>工作表 <select id="sheet" disabled></select></label><label>班级名称 <input id="class-name" maxlength="80" placeholder="例如：26 秋程设 · 王君臣"></label><button class="primary" data-action="create" disabled>确认创建</button><button data-action="cancel-import">取消</button></div><div id="preview" class="preview"></div></section>
     <div id="empty" class="panel empty">导入一份 XLSX 名册，开始查看班级学习情况。</div>
-    <main id="workspace" hidden><section class="panel"><div class="toolbar"><div><h2>比赛学习情况</h2></div><div class="row"><select id="contest-select" class="wide" aria-label="选择比赛"><option value="">选择可见比赛</option></select><input id="contest-id" inputmode="numeric" placeholder="或输入比赛 ID" size="12" aria-label="比赛 ID"><button class="primary" data-action="load">读取比赛</button><button data-action="refresh">刷新统计</button></div></div><p id="contest-title" class="muted"></p></section><div class="row" role="tablist" aria-label="班级比赛页面"><button id="contest-tab" data-action="contest-tab" role="tab" aria-selected="true" aria-controls="contest-pane" class="primary">比赛统计</button><button id="upsolve-tab" data-action="upsolve-tab" role="tab" aria-selected="false" aria-controls="upsolve-pane">补题排行榜</button></div><div id="contest-pane" role="tabpanel" aria-labelledby="contest-tab">
+    <main id="workspace" hidden><section class="panel"><div class="toolbar"><div><h2>比赛学习情况</h2></div><div class="row"><select id="contest-select" class="wide" aria-label="选择比赛"><option value="">选择可见比赛</option></select><input id="contest-id" inputmode="numeric" placeholder="或输入比赛 ID" size="12" aria-label="比赛 ID"><button class="primary" data-action="load">读取比赛</button><button data-action="refresh">刷新统计</button></div></div><p id="contest-title" class="muted"></p></section><div class="row" role="tablist" aria-label="班级比赛页面"><button id="contest-tab" data-action="contest-tab" role="tab" aria-selected="true" aria-controls="contest-pane" class="primary">比赛统计</button><button id="upsolve-tab" data-action="upsolve-tab" role="tab" aria-selected="false" aria-controls="upsolve-pane">补题排行榜</button><button id="review-tab" data-action="review-tab" role="tab" aria-selected="false" aria-controls="review-pane">代码复核</button></div><section id="review-pane" class="panel" role="tabpanel" aria-labelledby="review-tab" hidden></section><div id="contest-pane" role="tabpanel" aria-labelledby="contest-tab">
     <div id="metrics" class="cards"></div><section id="stats-panel" class="panel" hidden><div class="toolbar"><h2>逐题通过情况</h2><span id="chart-legend" class="muted">蓝色：通过人数　浅蓝：尝试人数</span></div><div id="chart" class="chart"></div></section>
     <section class="panel"><div class="toolbar"><h2>班级同学</h2><div class="row"><input id="search" placeholder="搜索姓名、学号、班级" aria-label="搜索学生"><select id="member-filter" aria-label="筛选学生"><option value="all">全部同学</option><option value="matched">已匹配</option><option value="missing">榜单未找到</option><option value="ambiguous">学号冲突</option></select></div></div><div id="members" class="table-wrap"></div><div id="member-pager" class="pager"></div></section>
     </div><section id="upsolve-pane" class="panel" role="tabpanel" aria-labelledby="upsolve-tab" hidden><div class="toolbar"><h2>补题排行榜</h2><div class="row"><label>截止时间 <input id="upsolve-until" type="datetime-local" step="1" aria-label="补题截止时间" title="留空查询至当前时间（北京时间）"></label><button data-action="upsolve" disabled class="primary">更新排行榜</button><button data-action="cancel-upsolve" hidden>取消查询</button></div></div><div class="toolbar" style="margin:12px 0"><div class="row"><select id="ranking-order" aria-label="排名依据"><option value="upsolved">按赛后补过排名</option><option value="total">按累计通过排名</option></select><input id="ranking-search" placeholder="搜索姓名、学号" aria-label="搜索排行榜学生"></div><span id="upsolve-time" class="muted"></span></div><div id="rank-table" class="table-wrap"><div class="empty">读取比赛后，更新补题排行榜。</div></div><div id="rank-pager" class="pager"></div></section>
@@ -58,7 +58,9 @@ function mountClassManager(core, contestCore, upsolveCore, upsolveReader) {
     prev.disabled = page <= 0; next.disabled = page >= pages - 1;
     target.append(el('span', `共 ${count} 条 · ${page + 1} / ${pages}`, 'muted'), prev, next);
   }
+  const reviewPanel=createAiReviewPanel($('#review-pane'),reviewCore,()=>({classId:currentId,className:selected()?.name,contest,summary,generation}),async(id,signal)=>readJson(`/api/contests/${id}/submissions?latest=0`,signal));
   function resetContest() {
+    reviewPanel.reset();
     generation++; upsolveController?.abort();upsolveController=null;upsolve=null;rankingPage=0;drawStandings();$('#upsolve-time').textContent='';$('[data-action=upsolve]').disabled=true;$('[data-action=cancel-upsolve]').hidden=true;$('#submission-scope').value='contest';for(const o of $('#submission-scope').options)o.disabled=o.value!=='contest';$('#student-problems').hidden=true; rankController?.abort(); subController?.abort(); rankController = subController = null;
     contest = rank = summary = activeStudent = submissionCache = null; memberPage = submissionPage = 0;
     $('#student-panel').hidden = $('#stats-panel').hidden = true; $('#contest-title').textContent = '';
@@ -100,12 +102,13 @@ function mountClassManager(core, contestCore, upsolveCore, upsolveReader) {
   }
   function switchPane(mode) {
     pageMode=mode;
-    for(const name of ['contest','upsolve']){
+    for(const name of ['contest','upsolve','review']){
       $(`#${name}-pane`).hidden=name!==mode;
       $(`#${name}-tab`).classList.toggle('primary',name===mode);
       $(`#${name}-tab`).setAttribute('aria-selected',String(name===mode));
     }
     activeStudent=null;$('#student-panel').hidden=true;
+    reviewPanel.setActive(mode==='review');
     if(mode==='upsolve')drawStandings();
   }
   function drawStandings() {
@@ -150,6 +153,7 @@ function mountClassManager(core, contestCore, upsolveCore, upsolveReader) {
       if(token!==generation)return;
       const result=core.summarize(selected().members,data,c.problems);
       contest=c;rank=data;summary=result;
+      if(pageMode==='review')reviewPanel.setActive(true);
       $('[data-action=upsolve]').disabled=Date.now()+clockOffset<c.end;
       $('#contest-title').textContent=`${c.title} · ${contestCore.phase(c,Date.now()+clockOffset).text} · ${new Date().toLocaleTimeString()} 更新`;
       notice('');
@@ -245,11 +249,11 @@ function mountClassManager(core, contestCore, upsolveCore, upsolveReader) {
     const all=core.submissions(scope==='upsolve'?post:scope==='all'?[...post,...during]:during,activeStudent.userId), pending=s=>['WT','JG'].includes(s.result)||!s.result;
     const rows=all.filter(s=>($('#problem-filter').value==='all'||String(s.problem_id)===$('#problem-filter').value)&&(filter==='all'||filter==='AC'&&s.result==='AC'||filter==='pending'&&pending(s)||filter==='failed'&&s.result!=='AC'&&!pending(s)));
     submissionPage=Math.min(submissionPage,Math.max(0,Math.ceil(rows.length/30)-1));
-    $('#submissions').replaceChildren(table(['提交 ID','题目','结果','得分','语言','提交时间','代码'],rows.slice(submissionPage*30,submissionPage*30+30).map(s=>{
+    $('#submissions').replaceChildren(table(['提交 ID','题目','结果','得分','语言','提交时间','代码','复核'],rows.slice(submissionPage*30,submissionPage*30+30).map(s=>{
       const p=contest.problems.find(p=>p.id===String(s.problem_id));
       const code=/^[1-9]\d*$/.test(String(s.id)) ? el('a','查看代码') : el('span','—');
       if(code.tagName==='A'){code.href=`/submission/${s.id}`;code.target='_blank';code.rel='noopener noreferrer';code.setAttribute('aria-label',`查看提交 ${s.id} 的代码`);}
-      return [s.id,p?`${p.label} · ${p.title}`:String(s.problem_id),el('span',s.result||'待评测',s.result==='AC'?'ac':pending(s)?'pending':'bad'),s.score??'—',s.lang,new Date(s.created_at).toLocaleString(),code];
+      return [s.id,p?`${p.label} · ${p.title}`:String(s.problem_id),el('span',s.result||'待评测',s.result==='AC'?'ac':pending(s)?'pending':'bad'),s.score??'—',s.lang,new Date(s.created_at).toLocaleString(),code,button('查看复核',()=>{switchPane('review');void reviewPanel.openDetail(String(s.id));})];
     })));
     pager($('#submission-pager'),rows.length,submissionPage,page=>{submissionPage=page;drawSubmissions();});
   }
@@ -298,7 +302,7 @@ function mountClassManager(core, contestCore, upsolveCore, upsolveReader) {
       if(action==='load'||action==='refresh')void loadContest();
       if(action==='refresh-submissions'&&activeStudent){if($('#submission-scope').value!=='contest')void loadUpsolve();else void showStudent(activeStudent,true,true);}
       if(action==='upsolve')void loadUpsolve();
-      if(action==='contest-tab'||action==='upsolve-tab')switchPane(action==='upsolve-tab'?'upsolve':'contest');
+      if(['contest-tab','upsolve-tab','review-tab'].includes(action))switchPane(action.replace('-tab',''));
       if(action==='cancel-upsolve')upsolveController?.abort();
       if(action==='close-student'){$('#student-panel').hidden=true;activeStudent=null;}
     }catch(e){notice(e.message,true);}
