@@ -87,7 +87,8 @@ function scoreMatrixRows(matrix) {
 function csvCell(value) {
   const text = String(value ?? '');
   // CSV has no cell types. An apostrophe prevents spreadsheet apps from evaluating
-  // formula-like text; quoting keeps ordinary identifiers such as 001 intact.
+  // formula-like text. CSV consumers must import student IDs as text; quotes
+  // alone cannot prevent Excel from converting 001 to a number.
   const safe = /^[\s]*[=+@\-]|^[\t\r\n]/.test(text) ? `'${text}` : text;
   return `"${safe.replaceAll('"', '""')}"`;
 }

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Accoding Modern · 北航 OJ 管理界面
 // @namespace    local.accoding.modern
-// @version      1.18.9
+// @version      1.19.0
 // @description  界面美化、班级名册、按题筛选通过提交、页内代码复核、独立补题排行榜与提交查看、赛事统计看板、Markdown 兼容编辑与批量测试点选择，保留原站登录和操作。
 // @include      https://accoding.buaa.edu.cn:4000/*
 // @run-at       document-end
@@ -14,7 +14,7 @@
 
 (() => {
 'use strict';
-const ACCODING_MODERN_VERSION="1.18.9";
+const ACCODING_MODERN_VERSION="1.19.0";
 if (location.origin !== 'https://accoding.buaa.edu.cn:4000') return;
 function createContestCore() {
   const decode = value => {
@@ -1464,7 +1464,8 @@ function scoreMatrixRows(matrix) {
 function csvCell(value) {
   const text = String(value ?? '');
   // CSV has no cell types. An apostrophe prevents spreadsheet apps from evaluating
-  // formula-like text; quoting keeps ordinary identifiers such as 001 intact.
+  // formula-like text. CSV consumers must import student IDs as text; quotes
+  // alone cannot prevent Excel from converting 001 to a number.
   const safe = /^[\s]*[=+@\-]|^[\t\r\n]/.test(text) ? `'${text}` : text;
   return `"${safe.replaceAll('"', '""')}"`;
 }

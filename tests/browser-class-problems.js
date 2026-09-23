@@ -81,7 +81,7 @@ window.__classProblemRun=(async()=>{
   $('#accepted-pager button:last-child').click();checks.pagination=ids().length===2&&$('#accepted-pager').textContent.includes('2 / 2');
   change('#accepted-search','100','input');checks.search_resets_page=count().startsWith('1 位同学 · 2 条')&&ids().join(',')==='2000'&&$('#accepted-pager').textContent.includes('1 / 1');
   change('#accepted-mode','all');checks.all_ac=ids().join(',')==='2000,1000';
-  $('#accepted-table tbody button').click();await settle();
+  [...root.querySelectorAll('#accepted-table tbody tr:first-child button')].find(b=>b.textContent==='查看该题全部提交').click();await settle();
   checks.student_attempt_history=$('#problem-filter').value==='91'&&$('#result-filter').value==='all'&&$('#submissions').textContent.includes('4000')&&!$('#submissions').textContent.includes('3000')&&reads()===1;
   checks.no_random_picker=!$('[data-action=pick-accepted]')&&!$('#accepted-pick')&&!$('#accepted-panel').textContent.includes('随机抽');
   change('#accepted-search','','input');

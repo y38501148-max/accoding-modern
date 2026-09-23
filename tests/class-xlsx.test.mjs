@@ -44,7 +44,7 @@ test('score CSV preserves BOM, CRLF, quoted commas, quotes, newlines and leading
   assert.deepEqual([...new Uint8Array(await blob.arrayBuffer()).slice(0,3)],[0xef,0xbb,0xbf]);
 });
 
-test('CSV protects every spreadsheet formula prefix and numeric-looking student IDs',()=>{
+test('CSV escapes formula prefixes and preserves identifier characters in the file',()=>{
   for(const name of ['=1+1','+1','-1','@SUM(A1)','\t=1','\r=1','\n=1','  =1']){
     const csv=serializeClassScoreCsv({headers:['学号','姓名'],rows:[['0001234567890123456789',name]]});
     assert.ok(csv.endsWith(`"0001234567890123456789","'${name}"`));
