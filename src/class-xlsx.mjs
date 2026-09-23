@@ -78,3 +78,118 @@ export async function readClassXlsx(file) {
   if (!sheets.length) throw new Error('没有可读取的工作表。');
   return sheets;
 }
+
+function scoreMatrixRows(matrix) {
+  if (!matrix || !Array.isArray(matrix.headers) || !Array.isArray(matrix.rows)) throw new Error('成绩矩阵格式不匹配。');
+  return [matrix.headers, ...matrix.rows];
+}
+
+function csvCell(value) {
+  const text = String(value ?? '');
+  // CSV has no cell types. An apostrophe prevents spreadsheet apps from evaluating
+  // formula-like text; quoting keeps ordinary identifiers such as 001 intact.
+  const safe = /^[\s]*[=+@\-]|^[\t\r\n]/.test(text) ? `'${text}` : text;
+  return `"${safe.replaceAll('"', '""')}"`;
+}
+
+/** Serialize a score matrix as UTF-8 BOM CSV with CRLF rows. */
+export function serializeClassScoreCsv(matrix) {
+  return '\ufeff' + scoreMatrixRows(matrix).map(row => row.map(csvCell).join(',')).join('\r\n');
+}
+
+function xmlEscape(value) {
+  return String(value ?? '').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\ufffe\uffff]/g, '\ufffd').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&apos;').replaceAll('\r', '&#13;');
+}
+
+function columnName(number) {
+  let result = '';
+  for (let n = number; n > 0; n = Math.floor((n - 1) / 26)) result = String.fromCharCode(65 + (n - 1) % 26) + result;
+  return result;
+}
+
+function scoreSheetXml(matrix) {
+  const rows = scoreMatrixRows(matrix);
+  const body = rows.map((row, rowIndex) => {
+    const number = rowIndex + 1;
+    const cells = row.map((value, columnIndex) => {
+      const ref = `${columnName(columnIndex + 1)}${number}`;
+      const numeric = rowIndex > 0 && (columnIndex === 2 || columnIndex === 3) && typeof value === 'number' && Number.isFinite(value);
+      return numeric
+        ? `<c r="${ref}" t="n"><v>${String(value)}</v></c>`
+        : `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${xmlEscape(value)}</t></is></c>`;
+    }).join('');
+    return `<row r="${number}">${cells}</row>`;
+  }).join('');
+  const width = rows.reduce((max, row) => Math.max(max, row.length), 0);
+  const ref = `A1:${columnName(Math.max(1, width))}${Math.max(1, rows.length)}`;
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="${ref}"/><sheetData>${body}</sheetData></worksheet>`;
+}
+
+function crc32(bytes) {
+  let crc = 0xffffffff;
+  for (const byte of bytes) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function u16(value) {
+  return Uint8Array.of(value & 255, (value >>> 8) & 255);
+}
+
+function u32(value) {
+  return Uint8Array.of(value & 255, (value >>> 8) & 255, (value >>> 16) & 255, (value >>> 24) & 255);
+}
+
+function joinBytes(parts) {
+  const result = new Uint8Array(parts.reduce((size, part) => size + part.length, 0));
+  let offset = 0;
+  for (const part of parts) { result.set(part, offset); offset += part.length; }
+  return result;
+}
+
+function zipStore(files) {
+  const encoder = new TextEncoder(), localParts = [], centralParts = [];
+  let offset = 0;
+  for (const file of files) {
+    const name = encoder.encode(file.name), data = typeof file.data === 'string' ? encoder.encode(file.data) : file.data;
+    const checksum = crc32(data), size = data.length;
+    const local = joinBytes([u32(0x04034b50), u16(20), u16(0x800), u16(0), u16(0), u16(33), u32(checksum), u32(size), u32(size), u16(name.length), u16(0), name, data]);
+    localParts.push(local);
+    const central = joinBytes([u32(0x02014b50), u16(20), u16(20), u16(0x800), u16(0), u16(0), u16(33), u32(checksum), u32(size), u32(size), u16(name.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(offset), name]);
+    centralParts.push(central);
+    offset += local.length;
+  }
+  const central = joinBytes(centralParts), locals = joinBytes(localParts);
+  return joinBytes([locals, central, u32(0x06054b50), u16(0), u16(0), u16(files.length), u16(files.length), u32(central.length), u32(locals.length), u16(0)]);
+}
+
+/** Create a minimal, dependency-free XLSX workbook as ZIP bytes. */
+export function createClassScoreXlsx(matrix) {
+  const sheet = scoreSheetXml(matrix);
+  const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>`;
+  const rootRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`;
+  const workbook = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="比赛成绩" sheetId="1" r:id="rId1"/></sheets></workbook>`;
+  const workbookRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>`;
+  return zipStore([
+    {name: '[Content_Types].xml', data: contentTypes},
+    {name: '_rels/.rels', data: rootRels},
+    {name: 'xl/workbook.xml', data: workbook},
+    {name: 'xl/_rels/workbook.xml.rels', data: workbookRels},
+    {name: 'xl/worksheets/sheet1.xml', data: sheet}
+  ]);
+}
+
+export function createClassScoreExport(matrix, className, contestTitle, format = 'xlsx') {
+  if (!['xlsx', 'csv'].includes(format)) throw new Error('不支持的成绩导出格式。');
+  const cleanName = value => String(value ?? '').normalize('NFKC').replace(/[\u0000-\u001f\u007f\\/:*?"<>|]/g, '_').trim().slice(0, 60) || '未命名';
+  const filename = `${cleanName(className)}-${cleanName(contestTitle)}-成绩.${format}`;
+  const content = format === 'csv' ? serializeClassScoreCsv(matrix) : createClassScoreXlsx(matrix);
+  const type = format === 'csv' ? 'text/csv;charset=utf-8' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  return {filename, blob: new Blob([content], {type})};
+}
+
+export const serializeClassScoreXlsx = createClassScoreXlsx;
+export const buildClassScoreXlsx = createClassScoreXlsx;
+export function createClassScoreXlsxBlob(matrix) { return new Blob([createClassScoreXlsx(matrix)], {type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}); }

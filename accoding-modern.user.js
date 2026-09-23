@@ -1274,6 +1274,11 @@ function createClassCore() {
     if (members.length > 5000) throw new Error('单个班级最多支持 5000 名学生。');
     return {members, warnings, header: header + 1};
   }
+  function hasProblemDetail(detail) {
+    if (detail == null) return false;
+    if (typeof detail !== 'object') return true;
+    return Array.isArray(detail) ? detail.length > 0 : Object.keys(detail).length > 0;
+  }
   function summarize(members, rank, problems) {
     if (!Array.isArray(rank)) throw new Error('榜单格式不匹配，无法计算班级统计。');
     const byNumber = new Map();
@@ -1292,13 +1297,40 @@ function createClassCore() {
         status: match ? 'matched' : candidates.length ? 'ambiguous' : 'missing',
         details: match?.detail || {},
         accepted: match ? problems.filter(p => match.detail[p.rankKey]?.result === 'AC').length : null,
-        tried: match ? problems.filter(p => match.detail[p.rankKey] != null).length : null};
+        tried: match ? problems.filter(p => hasProblemDetail(match.detail[p.rankKey])).length : null};
     });
     const stats = problems.map(p => ({...p,
       accepted: rows.filter(m => m.userId && m.details[p.rankKey]?.result === 'AC').length,
-      tried: rows.filter(m => m.userId && m.details[p.rankKey] != null).length}));
+      tried: rows.filter(m => m.userId && hasProblemDetail(m.details[p.rankKey])).length}));
     return {rows, stats, matched: rows.filter(m => m.userId).length,
       missing: rows.filter(m => m.status === 'missing').length, ambiguous: rows.filter(m => m.status === 'ambiguous').length};
+  }
+  function letters(index) {
+    let label = '';
+    for (let n = Number(index) + 1; n > 0; n = Math.floor((n - 1) / 26)) label = String.fromCharCode(65 + (n - 1) % 26) + label;
+    return label;
+  }
+  // Uses the normalized contest problem list, including the original site's rank keys.
+  function scoreMatrix(members, summary, problems) {
+    if (!summary || !Array.isArray(summary.rows) || !Array.isArray(problems)) throw new Error('请先读取比赛榜单。');
+    const byStudentId = new Map(summary.rows.map(row => [row.studentId, row]));
+    const normalized = problems.map((problem, index) => ({...problem,
+      rankKey: String(problem.rankKey ?? letters(index)),
+      label: String(problem.label || letters(index)),
+      title: String(problem.title || '未命名题目')
+    }));
+    const headers = ['学号', '姓名', '通过题数', '尝试题数', ...normalized.map(p => `${p.label} · ${p.title}`)];
+    const rows = members.map(member => {
+      const row = byStudentId.get(member.studentId);
+      const details = row?.userId && row.status !== 'missing' && row.status !== 'ambiguous' ? row.details : {};
+      const statuses = normalized.map(p => {
+        const detail = details?.[p.rankKey];
+        return !hasProblemDetail(detail) ? '未尝试' : detail.result === 'AC' ? 'AC' : 'WA';
+      });
+      return [member.studentId, member.name, statuses.filter(s => s === 'AC').length,
+        statuses.filter(s => s !== '未尝试').length, ...statuses];
+    });
+    return {headers, rows};
   }
   function submissions(raw, userId) {
     if (!Array.isArray(raw)) throw new Error('提交记录格式不匹配。');
@@ -1340,7 +1372,7 @@ function createClassCore() {
     chosen.sort((a,b)=>Number(a.member.userId)-Number(b.member.userId)||Number(b.submission.id)-Number(a.submission.id));
     return chosen;
   }
-  return {clean, roster, summarize, submissions, sortMembers, problemSubmissions, problemReviewSubmissions};
+  return {clean, roster, summarize, scoreMatrix, createScoreMatrix: scoreMatrix, submissions, sortMembers, problemSubmissions, problemReviewSubmissions};
 }
 
 // Local OOXML reader: shared strings, inline strings, cached formula values, multiple sheets.
@@ -1423,6 +1455,121 @@ async function readClassXlsx(file) {
   if (!sheets.length) throw new Error('没有可读取的工作表。');
   return sheets;
 }
+
+function scoreMatrixRows(matrix) {
+  if (!matrix || !Array.isArray(matrix.headers) || !Array.isArray(matrix.rows)) throw new Error('成绩矩阵格式不匹配。');
+  return [matrix.headers, ...matrix.rows];
+}
+
+function csvCell(value) {
+  const text = String(value ?? '');
+  // CSV has no cell types. An apostrophe prevents spreadsheet apps from evaluating
+  // formula-like text; quoting keeps ordinary identifiers such as 001 intact.
+  const safe = /^[\s]*[=+@\-]|^[\t\r\n]/.test(text) ? `'${text}` : text;
+  return `"${safe.replaceAll('"', '""')}"`;
+}
+
+/** Serialize a score matrix as UTF-8 BOM CSV with CRLF rows. */
+function serializeClassScoreCsv(matrix) {
+  return '\ufeff' + scoreMatrixRows(matrix).map(row => row.map(csvCell).join(',')).join('\r\n');
+}
+
+function xmlEscape(value) {
+  return String(value ?? '').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\ufffe\uffff]/g, '\ufffd').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&apos;').replaceAll('\r', '&#13;');
+}
+
+function columnName(number) {
+  let result = '';
+  for (let n = number; n > 0; n = Math.floor((n - 1) / 26)) result = String.fromCharCode(65 + (n - 1) % 26) + result;
+  return result;
+}
+
+function scoreSheetXml(matrix) {
+  const rows = scoreMatrixRows(matrix);
+  const body = rows.map((row, rowIndex) => {
+    const number = rowIndex + 1;
+    const cells = row.map((value, columnIndex) => {
+      const ref = `${columnName(columnIndex + 1)}${number}`;
+      const numeric = rowIndex > 0 && (columnIndex === 2 || columnIndex === 3) && typeof value === 'number' && Number.isFinite(value);
+      return numeric
+        ? `<c r="${ref}" t="n"><v>${String(value)}</v></c>`
+        : `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${xmlEscape(value)}</t></is></c>`;
+    }).join('');
+    return `<row r="${number}">${cells}</row>`;
+  }).join('');
+  const width = rows.reduce((max, row) => Math.max(max, row.length), 0);
+  const ref = `A1:${columnName(Math.max(1, width))}${Math.max(1, rows.length)}`;
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="${ref}"/><sheetData>${body}</sheetData></worksheet>`;
+}
+
+function crc32(bytes) {
+  let crc = 0xffffffff;
+  for (const byte of bytes) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function u16(value) {
+  return Uint8Array.of(value & 255, (value >>> 8) & 255);
+}
+
+function u32(value) {
+  return Uint8Array.of(value & 255, (value >>> 8) & 255, (value >>> 16) & 255, (value >>> 24) & 255);
+}
+
+function joinBytes(parts) {
+  const result = new Uint8Array(parts.reduce((size, part) => size + part.length, 0));
+  let offset = 0;
+  for (const part of parts) { result.set(part, offset); offset += part.length; }
+  return result;
+}
+
+function zipStore(files) {
+  const encoder = new TextEncoder(), localParts = [], centralParts = [];
+  let offset = 0;
+  for (const file of files) {
+    const name = encoder.encode(file.name), data = typeof file.data === 'string' ? encoder.encode(file.data) : file.data;
+    const checksum = crc32(data), size = data.length;
+    const local = joinBytes([u32(0x04034b50), u16(20), u16(0x800), u16(0), u16(0), u16(33), u32(checksum), u32(size), u32(size), u16(name.length), u16(0), name, data]);
+    localParts.push(local);
+    const central = joinBytes([u32(0x02014b50), u16(20), u16(20), u16(0x800), u16(0), u16(0), u16(33), u32(checksum), u32(size), u32(size), u16(name.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(offset), name]);
+    centralParts.push(central);
+    offset += local.length;
+  }
+  const central = joinBytes(centralParts), locals = joinBytes(localParts);
+  return joinBytes([locals, central, u32(0x06054b50), u16(0), u16(0), u16(files.length), u16(files.length), u32(central.length), u32(locals.length), u16(0)]);
+}
+
+/** Create a minimal, dependency-free XLSX workbook as ZIP bytes. */
+function createClassScoreXlsx(matrix) {
+  const sheet = scoreSheetXml(matrix);
+  const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>`;
+  const rootRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`;
+  const workbook = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="比赛成绩" sheetId="1" r:id="rId1"/></sheets></workbook>`;
+  const workbookRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>`;
+  return zipStore([
+    {name: '[Content_Types].xml', data: contentTypes},
+    {name: '_rels/.rels', data: rootRels},
+    {name: 'xl/workbook.xml', data: workbook},
+    {name: 'xl/_rels/workbook.xml.rels', data: workbookRels},
+    {name: 'xl/worksheets/sheet1.xml', data: sheet}
+  ]);
+}
+
+function createClassScoreExport(matrix, className, contestTitle, format = 'xlsx') {
+  if (!['xlsx', 'csv'].includes(format)) throw new Error('不支持的成绩导出格式。');
+  const cleanName = value => String(value ?? '').normalize('NFKC').replace(/[\u0000-\u001f\u007f\\/:*?"<>|]/g, '_').trim().slice(0, 60) || '未命名';
+  const filename = `${cleanName(className)}-${cleanName(contestTitle)}-成绩.${format}`;
+  const content = format === 'csv' ? serializeClassScoreCsv(matrix) : createClassScoreXlsx(matrix);
+  const type = format === 'csv' ? 'text/csv;charset=utf-8' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  return {filename, blob: new Blob([content], {type})};
+}
+
+const serializeClassScoreXlsx = createClassScoreXlsx;
+const buildClassScoreXlsx = createClassScoreXlsx;
+function createClassScoreXlsxBlob(matrix) { return new Blob([createClassScoreXlsx(matrix)], {type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}); }
 
 function createAiReviewCore() {
   const api='https://muzermat.online:8443/oj-review-api/v2';
@@ -1827,7 +1974,7 @@ function mountClassManager(core, contestCore, upsolveCore, upsolveReader, review
     <div id="message" class="message" role="status" aria-live="polite" hidden></div>
     <section id="import-panel" class="panel" hidden><h2>从 Excel 创建班级</h2><div class="row"><input id="file" type="file" accept=".xlsx" aria-label="选择 XLSX 名册"><label>工作表 <select id="sheet" disabled></select></label><label>班级名称 <input id="class-name" maxlength="80" placeholder="例如：26 秋程设 · 王君臣"></label><button class="primary" data-action="create" disabled>确认创建</button><button data-action="cancel-import">取消</button></div><div id="preview" class="preview"></div></section>
     <div id="empty" class="panel empty">导入一份 XLSX 名册，开始查看班级学习情况。</div>
-    <main id="workspace" hidden><section class="panel"><div class="toolbar"><div><h2>比赛学习情况</h2></div><div class="row"><select id="contest-select" class="wide" aria-label="选择比赛"><option value="">选择可见比赛</option></select><input id="contest-id" type="number" min="1" autocomplete="off" inputmode="numeric" placeholder="或输入比赛 ID" size="12" aria-label="比赛 ID"><button class="primary" data-action="load">读取比赛</button><button data-action="refresh">刷新统计</button></div></div><p id="contest-title" class="muted"></p></section><div class="row" role="tablist" aria-label="班级比赛页面"><button id="contest-tab" data-action="contest-tab" role="tab" aria-selected="true" aria-controls="contest-pane" class="primary">比赛统计</button><button id="upsolve-tab" data-action="upsolve-tab" role="tab" aria-selected="false" aria-controls="upsolve-pane">补题排行榜</button><button id="review-tab" data-action="review-tab" role="tab" aria-selected="false" aria-controls="review-pane">代码复核</button></div><section id="review-pane" class="panel" role="tabpanel" aria-labelledby="review-tab" hidden></section><div id="contest-pane" role="tabpanel" aria-labelledby="contest-tab">
+    <main id="workspace" hidden><section class="panel"><div class="toolbar"><div><h2>比赛学习情况</h2></div><div class="row"><select id="contest-select" class="wide" aria-label="选择比赛"><option value="">选择可见比赛</option></select><input id="contest-id" type="number" min="1" autocomplete="off" inputmode="numeric" placeholder="或输入比赛 ID" size="12" aria-label="比赛 ID"><button class="primary" data-action="load">读取比赛</button><button data-action="refresh">刷新统计</button><label>导出格式 <select id="score-export-format" aria-label="比赛成绩导出格式" disabled><option value="xlsx">XLSX</option><option value="csv">CSV</option></select></label><button data-action="export-score" disabled>导出比赛成绩</button></div></div><p id="contest-title" class="muted"></p></section><div class="row" role="tablist" aria-label="班级比赛页面"><button id="contest-tab" data-action="contest-tab" role="tab" aria-selected="true" aria-controls="contest-pane" class="primary">比赛统计</button><button id="upsolve-tab" data-action="upsolve-tab" role="tab" aria-selected="false" aria-controls="upsolve-pane">补题排行榜</button><button id="review-tab" data-action="review-tab" role="tab" aria-selected="false" aria-controls="review-pane">代码复核</button></div><section id="review-pane" class="panel" role="tabpanel" aria-labelledby="review-tab" hidden></section><div id="contest-pane" role="tabpanel" aria-labelledby="contest-tab">
     <div id="metrics" class="cards"></div><section id="stats-panel" class="panel" hidden><div class="toolbar"><h2>逐题通过情况</h2><span id="chart-legend" class="muted">蓝色：通过人数　浅蓝：尝试人数</span></div><div id="chart" class="chart"></div></section>
     <section id="accepted-panel" class="panel" hidden><div class="toolbar"><h2>按题查看通过提交</h2><div class="row"><select id="accepted-problem" aria-label="选择通过提交的题目"><option value="">选择一道题</option></select><input id="accepted-search" placeholder="搜索姓名、学号、班级" aria-label="搜索通过同学"><select id="accepted-mode" aria-label="通过提交显示方式"><option value="latest">每人最新一条 AC</option><option value="all">全部 AC 提交</option></select><button data-action="refresh-accepted" disabled>刷新通过提交</button><button data-action="review-problem" disabled>进入本题代码核查</button></div></div><p class="muted">仅显示本班同学在比赛时间内的 AC 提交。</p><p id="accepted-count" class="muted" role="status" aria-live="polite"></p><div id="accepted-table" class="table-wrap"></div><div id="accepted-pager" class="pager"></div></section>
     <section class="panel"><div class="toolbar"><h2>班级同学</h2><div class="row"><input id="search" placeholder="搜索姓名、学号、班级" aria-label="搜索学生"><select id="member-filter" aria-label="筛选学生"><option value="all">全部同学</option><option value="matched">已匹配</option><option value="missing">榜单未找到</option><option value="ambiguous">学号冲突</option></select></div></div><div id="members" class="table-wrap"></div><div id="member-pager" class="pager"></div></section>
@@ -1882,6 +2029,7 @@ function mountClassManager(core, contestCore, upsolveCore, upsolveReader, review
     $('#accepted-panel').hidden=true;$('#accepted-problem').replaceChildren(option('','选择一道题'));
     $('#accepted-search').value='';drawAccepted();
     $('#student-panel').hidden = $('#stats-panel').hidden = true; $('#contest-title').textContent = '';
+    $('#score-export-format').value = 'xlsx'; $('#score-export-format').disabled = true; $('[data-action="export-score"]').disabled = true;
     $('[data-action="load"]').disabled = $('[data-action="refresh"]').disabled = false;
   }
   function drawClasses() {
@@ -1896,6 +2044,8 @@ function mountClassManager(core, contestCore, upsolveCore, upsolveReader, review
     const c = selected(); if (!c) return;
     const values = [['班级人数', c.members.length], ['榜单已匹配', summary ? summary.matched : '—'], ['有通过的同学', summary ? summary.rows.filter(m=>m.accepted > 0).length : '—'], ['待核对学号', summary ? summary.missing + summary.ambiguous : '—']];
     $('#metrics').replaceChildren(...values.map(([label,value]) => {const card=el('div',null,'metric'); card.append(el('span',label,'muted'),el('strong',value)); return card;}));
+    const scoreReady = !!(contest && summary);
+    $('#score-export-format').disabled = !scoreReady; $('[data-action="export-score"]').disabled = !scoreReady;
     $('#stats-panel').hidden = !summary || contestCore.phase(contest, Date.now() + clockOffset).key === 'upcoming';
     if (!summary) return;
     $('#chart-legend').textContent='蓝色：通过人数　浅蓝：尝试人数';
@@ -1945,6 +2095,14 @@ function mountClassManager(core, contestCore, upsolveCore, upsolveReader, review
       }),details];
     })));
     pager($('#rank-pager'),rows.length,rankingPage,page=>{rankingPage=page;drawStandings();});
+  }
+  function exportScore() {
+    if (!selected() || !contest || !summary) return;
+    const matrix = core.scoreMatrix(selected().members, summary, contest.problems);
+    const {blob, filename} = createClassScoreExport(matrix, selected().name, contest.title, $('#score-export-format').value);
+    const url = URL.createObjectURL(blob), link = el('a');
+    link.href = url; link.download = filename;
+    link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
   async function readJson(path, signal) {
     const res=await fetch(path,{credentials:'same-origin',cache:'no-store',signal});
@@ -2162,6 +2320,7 @@ function mountClassManager(core, contestCore, upsolveCore, upsolveReader, review
   $('#sheet').onchange=drawPreview;
   $('#class-select').onchange=()=>{currentId=$('#class-select').value;resetContest();drawClasses();};
   $('#contest-select').onchange=()=>{$('#contest-id').value='';resetContest();drawClasses();};
+  $('#contest-id').oninput=()=>{resetContest();drawClasses();};
   $('#search').oninput=$('#member-filter').onchange=()=>{memberPage=0;drawMembers();};
   $('#result-filter').onchange=$('#problem-filter').onchange=()=>{submissionPage=0;drawSubmissions();};
   $('#accepted-problem').onchange=()=>{activeStudent=null;$('#student-panel').hidden=true;void showAccepted();};
@@ -2186,6 +2345,7 @@ function mountClassManager(core, contestCore, upsolveCore, upsolveReader, review
         const csv='\ufeff'+[['学号','姓名','班级'],...selected().members.map(m=>[m.studentId,m.name,m.group])].map(r=>r.map(cell).join(',')).join('\r\n');
         const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})),a=el('a');a.href=url;a.download=selected().name.replace(/[\\/:*?"<>|]/g,'_')+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
       }
+      if(action==='export-score')exportScore();
       if(action==='load'||action==='refresh')void loadContest();
       if(action==='refresh-submissions'&&activeStudent){if($('#submission-scope').value!=='contest')void loadUpsolve();else void showStudent(activeStudent,true,true);}
       if(action==='upsolve')void loadUpsolve();

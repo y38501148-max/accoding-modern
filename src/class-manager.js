@@ -18,7 +18,7 @@ function mountClassManager(core, contestCore, upsolveCore, upsolveReader, review
     <div id="message" class="message" role="status" aria-live="polite" hidden></div>
     <section id="import-panel" class="panel" hidden><h2>从 Excel 创建班级</h2><div class="row"><input id="file" type="file" accept=".xlsx" aria-label="选择 XLSX 名册"><label>工作表 <select id="sheet" disabled></select></label><label>班级名称 <input id="class-name" maxlength="80" placeholder="例如：26 秋程设 · 王君臣"></label><button class="primary" data-action="create" disabled>确认创建</button><button data-action="cancel-import">取消</button></div><div id="preview" class="preview"></div></section>
     <div id="empty" class="panel empty">导入一份 XLSX 名册，开始查看班级学习情况。</div>
-    <main id="workspace" hidden><section class="panel"><div class="toolbar"><div><h2>比赛学习情况</h2></div><div class="row"><select id="contest-select" class="wide" aria-label="选择比赛"><option value="">选择可见比赛</option></select><input id="contest-id" type="number" min="1" autocomplete="off" inputmode="numeric" placeholder="或输入比赛 ID" size="12" aria-label="比赛 ID"><button class="primary" data-action="load">读取比赛</button><button data-action="refresh">刷新统计</button></div></div><p id="contest-title" class="muted"></p></section><div class="row" role="tablist" aria-label="班级比赛页面"><button id="contest-tab" data-action="contest-tab" role="tab" aria-selected="true" aria-controls="contest-pane" class="primary">比赛统计</button><button id="upsolve-tab" data-action="upsolve-tab" role="tab" aria-selected="false" aria-controls="upsolve-pane">补题排行榜</button><button id="review-tab" data-action="review-tab" role="tab" aria-selected="false" aria-controls="review-pane">代码复核</button></div><section id="review-pane" class="panel" role="tabpanel" aria-labelledby="review-tab" hidden></section><div id="contest-pane" role="tabpanel" aria-labelledby="contest-tab">
+    <main id="workspace" hidden><section class="panel"><div class="toolbar"><div><h2>比赛学习情况</h2></div><div class="row"><select id="contest-select" class="wide" aria-label="选择比赛"><option value="">选择可见比赛</option></select><input id="contest-id" type="number" min="1" autocomplete="off" inputmode="numeric" placeholder="或输入比赛 ID" size="12" aria-label="比赛 ID"><button class="primary" data-action="load">读取比赛</button><button data-action="refresh">刷新统计</button><label>导出格式 <select id="score-export-format" aria-label="比赛成绩导出格式" disabled><option value="xlsx">XLSX</option><option value="csv">CSV</option></select></label><button data-action="export-score" disabled>导出比赛成绩</button></div></div><p id="contest-title" class="muted"></p></section><div class="row" role="tablist" aria-label="班级比赛页面"><button id="contest-tab" data-action="contest-tab" role="tab" aria-selected="true" aria-controls="contest-pane" class="primary">比赛统计</button><button id="upsolve-tab" data-action="upsolve-tab" role="tab" aria-selected="false" aria-controls="upsolve-pane">补题排行榜</button><button id="review-tab" data-action="review-tab" role="tab" aria-selected="false" aria-controls="review-pane">代码复核</button></div><section id="review-pane" class="panel" role="tabpanel" aria-labelledby="review-tab" hidden></section><div id="contest-pane" role="tabpanel" aria-labelledby="contest-tab">
     <div id="metrics" class="cards"></div><section id="stats-panel" class="panel" hidden><div class="toolbar"><h2>逐题通过情况</h2><span id="chart-legend" class="muted">蓝色：通过人数　浅蓝：尝试人数</span></div><div id="chart" class="chart"></div></section>
     <section id="accepted-panel" class="panel" hidden><div class="toolbar"><h2>按题查看通过提交</h2><div class="row"><select id="accepted-problem" aria-label="选择通过提交的题目"><option value="">选择一道题</option></select><input id="accepted-search" placeholder="搜索姓名、学号、班级" aria-label="搜索通过同学"><select id="accepted-mode" aria-label="通过提交显示方式"><option value="latest">每人最新一条 AC</option><option value="all">全部 AC 提交</option></select><button data-action="refresh-accepted" disabled>刷新通过提交</button><button data-action="review-problem" disabled>进入本题代码核查</button></div></div><p class="muted">仅显示本班同学在比赛时间内的 AC 提交。</p><p id="accepted-count" class="muted" role="status" aria-live="polite"></p><div id="accepted-table" class="table-wrap"></div><div id="accepted-pager" class="pager"></div></section>
     <section class="panel"><div class="toolbar"><h2>班级同学</h2><div class="row"><input id="search" placeholder="搜索姓名、学号、班级" aria-label="搜索学生"><select id="member-filter" aria-label="筛选学生"><option value="all">全部同学</option><option value="matched">已匹配</option><option value="missing">榜单未找到</option><option value="ambiguous">学号冲突</option></select></div></div><div id="members" class="table-wrap"></div><div id="member-pager" class="pager"></div></section>
@@ -73,6 +73,7 @@ function mountClassManager(core, contestCore, upsolveCore, upsolveReader, review
     $('#accepted-panel').hidden=true;$('#accepted-problem').replaceChildren(option('','选择一道题'));
     $('#accepted-search').value='';drawAccepted();
     $('#student-panel').hidden = $('#stats-panel').hidden = true; $('#contest-title').textContent = '';
+    $('#score-export-format').value = 'xlsx'; $('#score-export-format').disabled = true; $('[data-action="export-score"]').disabled = true;
     $('[data-action="load"]').disabled = $('[data-action="refresh"]').disabled = false;
   }
   function drawClasses() {
@@ -87,6 +88,8 @@ function mountClassManager(core, contestCore, upsolveCore, upsolveReader, review
     const c = selected(); if (!c) return;
     const values = [['班级人数', c.members.length], ['榜单已匹配', summary ? summary.matched : '—'], ['有通过的同学', summary ? summary.rows.filter(m=>m.accepted > 0).length : '—'], ['待核对学号', summary ? summary.missing + summary.ambiguous : '—']];
     $('#metrics').replaceChildren(...values.map(([label,value]) => {const card=el('div',null,'metric'); card.append(el('span',label,'muted'),el('strong',value)); return card;}));
+    const scoreReady = !!(contest && summary);
+    $('#score-export-format').disabled = !scoreReady; $('[data-action="export-score"]').disabled = !scoreReady;
     $('#stats-panel').hidden = !summary || contestCore.phase(contest, Date.now() + clockOffset).key === 'upcoming';
     if (!summary) return;
     $('#chart-legend').textContent='蓝色：通过人数　浅蓝：尝试人数';
@@ -136,6 +139,14 @@ function mountClassManager(core, contestCore, upsolveCore, upsolveReader, review
       }),details];
     })));
     pager($('#rank-pager'),rows.length,rankingPage,page=>{rankingPage=page;drawStandings();});
+  }
+  function exportScore() {
+    if (!selected() || !contest || !summary) return;
+    const matrix = core.scoreMatrix(selected().members, summary, contest.problems);
+    const {blob, filename} = createClassScoreExport(matrix, selected().name, contest.title, $('#score-export-format').value);
+    const url = URL.createObjectURL(blob), link = el('a');
+    link.href = url; link.download = filename;
+    link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
   async function readJson(path, signal) {
     const res=await fetch(path,{credentials:'same-origin',cache:'no-store',signal});
@@ -353,6 +364,7 @@ function mountClassManager(core, contestCore, upsolveCore, upsolveReader, review
   $('#sheet').onchange=drawPreview;
   $('#class-select').onchange=()=>{currentId=$('#class-select').value;resetContest();drawClasses();};
   $('#contest-select').onchange=()=>{$('#contest-id').value='';resetContest();drawClasses();};
+  $('#contest-id').oninput=()=>{resetContest();drawClasses();};
   $('#search').oninput=$('#member-filter').onchange=()=>{memberPage=0;drawMembers();};
   $('#result-filter').onchange=$('#problem-filter').onchange=()=>{submissionPage=0;drawSubmissions();};
   $('#accepted-problem').onchange=()=>{activeStudent=null;$('#student-panel').hidden=true;void showAccepted();};
@@ -377,6 +389,7 @@ function mountClassManager(core, contestCore, upsolveCore, upsolveReader, review
         const csv='\ufeff'+[['学号','姓名','班级'],...selected().members.map(m=>[m.studentId,m.name,m.group])].map(r=>r.map(cell).join(',')).join('\r\n');
         const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})),a=el('a');a.href=url;a.download=selected().name.replace(/[\\/:*?"<>|]/g,'_')+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
       }
+      if(action==='export-score')exportScore();
       if(action==='load'||action==='refresh')void loadContest();
       if(action==='refresh-submissions'&&activeStudent){if($('#submission-scope').value!=='contest')void loadUpsolve();else void showStudent(activeStudent,true,true);}
       if(action==='upsolve')void loadUpsolve();

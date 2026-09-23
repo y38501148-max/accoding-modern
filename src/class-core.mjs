@@ -22,6 +22,11 @@ export function createClassCore() {
     if (members.length > 5000) throw new Error('单个班级最多支持 5000 名学生。');
     return {members, warnings, header: header + 1};
   }
+  function hasProblemDetail(detail) {
+    if (detail == null) return false;
+    if (typeof detail !== 'object') return true;
+    return Array.isArray(detail) ? detail.length > 0 : Object.keys(detail).length > 0;
+  }
   function summarize(members, rank, problems) {
     if (!Array.isArray(rank)) throw new Error('榜单格式不匹配，无法计算班级统计。');
     const byNumber = new Map();
@@ -40,13 +45,40 @@ export function createClassCore() {
         status: match ? 'matched' : candidates.length ? 'ambiguous' : 'missing',
         details: match?.detail || {},
         accepted: match ? problems.filter(p => match.detail[p.rankKey]?.result === 'AC').length : null,
-        tried: match ? problems.filter(p => match.detail[p.rankKey] != null).length : null};
+        tried: match ? problems.filter(p => hasProblemDetail(match.detail[p.rankKey])).length : null};
     });
     const stats = problems.map(p => ({...p,
       accepted: rows.filter(m => m.userId && m.details[p.rankKey]?.result === 'AC').length,
-      tried: rows.filter(m => m.userId && m.details[p.rankKey] != null).length}));
+      tried: rows.filter(m => m.userId && hasProblemDetail(m.details[p.rankKey])).length}));
     return {rows, stats, matched: rows.filter(m => m.userId).length,
       missing: rows.filter(m => m.status === 'missing').length, ambiguous: rows.filter(m => m.status === 'ambiguous').length};
+  }
+  function letters(index) {
+    let label = '';
+    for (let n = Number(index) + 1; n > 0; n = Math.floor((n - 1) / 26)) label = String.fromCharCode(65 + (n - 1) % 26) + label;
+    return label;
+  }
+  // Uses the normalized contest problem list, including the original site's rank keys.
+  function scoreMatrix(members, summary, problems) {
+    if (!summary || !Array.isArray(summary.rows) || !Array.isArray(problems)) throw new Error('请先读取比赛榜单。');
+    const byStudentId = new Map(summary.rows.map(row => [row.studentId, row]));
+    const normalized = problems.map((problem, index) => ({...problem,
+      rankKey: String(problem.rankKey ?? letters(index)),
+      label: String(problem.label || letters(index)),
+      title: String(problem.title || '未命名题目')
+    }));
+    const headers = ['学号', '姓名', '通过题数', '尝试题数', ...normalized.map(p => `${p.label} · ${p.title}`)];
+    const rows = members.map(member => {
+      const row = byStudentId.get(member.studentId);
+      const details = row?.userId && row.status !== 'missing' && row.status !== 'ambiguous' ? row.details : {};
+      const statuses = normalized.map(p => {
+        const detail = details?.[p.rankKey];
+        return !hasProblemDetail(detail) ? '未尝试' : detail.result === 'AC' ? 'AC' : 'WA';
+      });
+      return [member.studentId, member.name, statuses.filter(s => s === 'AC').length,
+        statuses.filter(s => s !== '未尝试').length, ...statuses];
+    });
+    return {headers, rows};
   }
   function submissions(raw, userId) {
     if (!Array.isArray(raw)) throw new Error('提交记录格式不匹配。');
@@ -88,5 +120,5 @@ export function createClassCore() {
     chosen.sort((a,b)=>Number(a.member.userId)-Number(b.member.userId)||Number(b.submission.id)-Number(a.submission.id));
     return chosen;
   }
-  return {clean, roster, summarize, submissions, sortMembers, problemSubmissions, problemReviewSubmissions};
+  return {clean, roster, summarize, scoreMatrix, createScoreMatrix: scoreMatrix, submissions, sortMembers, problemSubmissions, problemReviewSubmissions};
 }

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createClassCore} from '../src/class-core.mjs';
+import {createContestCore} from '../src/contest-core.mjs';
 const core=createClassCore();
 test('class members sort by in-contest solved count, then student number; unmatched last',()=>{
   const rows=[{studentId:'002',userId:'2',accepted:3},{studentId:'000',userId:null,accepted:null},{studentId:'003',userId:'3',accepted:10},{studentId:'001',userId:'1',during:3,upsolved:7}];
@@ -55,6 +56,59 @@ test('problem AC selection uses matched class accounts and exact problem IDs, ke
   assert.deepEqual(core.problemSubmissions(raw,[],'99'),[]);
   assert.throws(()=>core.problemSubmissions({error:'denied'},students,'99'),/格式/);
 });
+test('score matrix follows roster and contest order and agrees with summary counts',()=>{
+  const roster=[{studentId:'003',name:'丙'},{studentId:'001',name:'甲'},{studentId:'002',name:'乙'},{studentId:'004',name:'冲突'}];
+  const problems=createContestCore().normalizeContest({id:1,start_time:'2026-09-01T00:00:00Z',end_time:'2026-09-01T02:00:00Z',
+    problems:Array.from({length:7},(_,i)=>({id:100-i,title:`题目 ${i}`,contest_problem_list:{order:i}})).reverse()}).problems;
+  const summary=core.summarize(roster,[
+    {user:{id:1,student_id:'001'},detail:{A:{result:'AC'},B:{result:'WA'},C:{result:'JG'},D:{result:'WT'},E:{},F:null}},
+    {user:{id:2,student_id:'002'},detail:{A:{result:'RE'},B:{result:'CE'},C:{result:''},D:{result:null}}},
+    {user:{id:3,student_id:'004'},detail:{A:{result:'AC'}}},
+    {user:{id:4,student_id:'004'},detail:{A:{result:'AC'}}}
+  ],problems);
+  summary.rows.reverse(); // A sorted or filtered view must not change export order or roster identity.
+  const before=JSON.stringify([roster,summary,problems]);
+  const matrix=core.scoreMatrix(roster,summary,problems);
+  assert.deepEqual(matrix.headers,['学号','姓名','通过题数','尝试题数',...['A','B','C','D','E','F','G'].map((v,i)=>`${v} · 题目 ${i}`)]);
+  assert.deepEqual(matrix.rows,[
+    ['003','丙',0,0,...Array(7).fill('未尝试')],
+    ['001','甲',1,4,'AC','WA','WA','WA','未尝试','未尝试','未尝试'],
+    ['002','乙',0,4,'WA','WA','WA','WA','未尝试','未尝试','未尝试'],
+    ['004','冲突',0,0,...Array(7).fill('未尝试')]
+  ]);
+  for(const row of matrix.rows){
+    const summaryRow=summary.rows.find(m=>m.studentId===row[0]);
+    assert.equal(row[2],summaryRow.accepted??0);
+    assert.equal(row[3],summaryRow.tried??0);
+    assert.equal(row[2],row.slice(4).filter(s=>s==='AC').length);
+    assert.equal(row[3],row.slice(4).filter(s=>s!=='未尝试').length);
+  }
+  assert.equal(JSON.stringify([roster,summary,problems]),before);
+});
+
+test('score matrix retains absent or unresolved students even if summary contains misleading details',()=>{
+  const summary={rows:[
+    {studentId:'001',status:'missing',userId:'1',details:{A:{result:'AC'}}},
+    {studentId:'002',status:'ambiguous',userId:'2',details:{A:{result:'AC'}}}
+  ]};
+  const matrix=core.scoreMatrix(members,summary,[{label:'A',title:'题名',rankKey:'A'}]);
+  assert.deepEqual(matrix.rows,members.map(m=>[m.studentId,m.name,0,0,'未尝试']));
+  assert.throws(()=>core.scoreMatrix(members,null,[]),/请先读取/);
+  assert.deepEqual(core.scoreMatrix(members,core.summarize(members,[],[]),[]),{
+    headers:['学号','姓名','通过题数','尝试题数'],rows:members.map(m=>[m.studentId,m.name,0,0])});
+});
+
+test('score matrix uses display labels and legacy rank keys independently beyond Z',()=>{
+  const problems=createContestCore().normalizeContest({id:1,start_time:'2026-09-01T00:00:00Z',end_time:'2026-09-01T02:00:00Z',
+    problems:Array.from({length:28},(_,i)=>({id:i+1,title:`题${i}`,contest_problem_list:{order:i}}))}).problems;
+  const summary=core.summarize(members,[{user:{id:1,student_id:'001'},detail:{BA:{result:'AC'},BB:{result:'JG'}}}],problems);
+  const matrix=core.scoreMatrix(members,summary,problems);
+  assert.equal(matrix.headers[29],'Z · 题25');
+  assert.deepEqual(matrix.headers.slice(30),['AA · 题26','AB · 题27']);
+  assert.deepEqual(matrix.rows[0].slice(30),['AC','WA']);
+  assert.deepEqual(matrix.rows[0].slice(2,4),[1,2]);
+});
+
 test('single problem review picks one AC or the latest two attempts per matched user',()=>{
   const students=[{studentId:'001',status:'matched',userId:'1'},{studentId:'002',status:'matched',userId:'2'},{studentId:'003',status:'matched',userId:'3'},{studentId:'004',status:'ambiguous',userId:'4'}];
   const raw=[
