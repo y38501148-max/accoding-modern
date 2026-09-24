@@ -16,8 +16,8 @@ function mountClassManager(core, contestCore, upsolveCore, upsolveReader, review
     <div class="shell"><header class="top"><div><div class="eyebrow">ACCODING · CLASSROOM</div><h1>班级</h1><span class="tag">${ACCODING_MODERN_VERSION}</span></div><button data-action="close">← 返回 OJ</button></header>
     <div class="toolbar"><div class="row"><select id="class-select" aria-label="选择班级"></select><button data-action="import">＋ 导入名册</button></div><div class="row"><button data-action="rename">重命名</button><button data-action="export">导出名册 CSV</button><button class="danger" data-action="delete">删除班级</button></div></div>
     <div id="message" class="message" role="status" aria-live="polite" hidden></div>
-    <section id="import-panel" class="panel" hidden><h2>从 Excel 创建班级</h2><div class="row"><input id="file" type="file" accept=".xlsx" aria-label="选择 XLSX 名册"><label>工作表 <select id="sheet" disabled></select></label><label>班级名称 <input id="class-name" maxlength="80" placeholder="例如：26 秋程设 · 王君臣"></label><button class="primary" data-action="create" disabled>确认创建</button><button data-action="cancel-import">取消</button></div><div id="preview" class="preview"></div></section>
-    <div id="empty" class="panel empty">导入一份 XLSX 名册，开始查看班级学习情况。</div>
+    <section id="import-panel" class="panel" hidden><h2>从 Excel 创建班级</h2><div class="row"><input id="file" type="file" accept=".xls,.xlsx" aria-label="选择 XLS 或 XLSX 名册"><label>工作表 <select id="sheet" disabled></select></label><label>班级名称 <input id="class-name" maxlength="80" placeholder="例如：26 秋程设 · 王君臣"></label><button class="primary" data-action="create" disabled>确认创建</button><button data-action="cancel-import">取消</button></div><div id="preview" class="preview"></div></section>
+    <div id="empty" class="panel empty">导入一份 XLS / XLSX 名册，开始查看班级学习情况。</div>
     <main id="workspace" hidden><section class="panel"><div class="toolbar"><div><h2>比赛学习情况</h2></div><div class="row"><select id="contest-select" class="wide" aria-label="选择比赛"><option value="">选择可见比赛</option></select><input id="contest-id" type="number" min="1" autocomplete="off" inputmode="numeric" placeholder="或输入比赛 ID" size="12" aria-label="比赛 ID"><button class="primary" data-action="load">读取比赛</button><button data-action="refresh">刷新统计</button><label>导出格式 <select id="score-export-format" aria-label="比赛成绩导出格式" disabled><option value="xlsx">XLSX</option><option value="csv">CSV</option></select></label><button data-action="export-score" disabled>导出比赛成绩</button></div></div><p id="contest-title" class="muted"></p></section><div class="row" role="tablist" aria-label="班级比赛页面"><button id="contest-tab" data-action="contest-tab" role="tab" aria-selected="true" aria-controls="contest-pane" class="primary">比赛统计</button><button id="upsolve-tab" data-action="upsolve-tab" role="tab" aria-selected="false" aria-controls="upsolve-pane">补题排行榜</button><button id="review-tab" data-action="review-tab" role="tab" aria-selected="false" aria-controls="review-pane">代码复核</button></div><section id="review-pane" class="panel" role="tabpanel" aria-labelledby="review-tab" hidden></section><div id="contest-pane" role="tabpanel" aria-labelledby="contest-tab">
     <div id="metrics" class="cards"></div><section id="stats-panel" class="panel" hidden><div class="toolbar"><h2>逐题通过情况</h2><span id="chart-legend" class="muted">蓝色：通过人数　浅蓝：尝试人数</span></div><div id="chart" class="chart"></div></section>
     <section id="accepted-panel" class="panel" hidden><div class="toolbar"><h2>按题查看通过提交</h2><div class="row"><select id="accepted-problem" aria-label="选择通过提交的题目"><option value="">选择一道题</option></select><input id="accepted-search" placeholder="搜索姓名、学号、班级" aria-label="搜索通过同学"><select id="accepted-mode" aria-label="通过提交显示方式"><option value="latest">每人最新一条 AC</option><option value="all">全部 AC 提交</option></select><button data-action="refresh-accepted" disabled>刷新通过提交</button><button data-action="review-problem" disabled>进入本题代码核查</button></div></div><p class="muted">仅显示本班同学在比赛时间内的 AC 提交。</p><p id="accepted-count" class="muted" role="status" aria-live="polite"></p><div id="accepted-table" class="table-wrap"></div><div id="accepted-pager" class="pager"></div></section>
@@ -352,14 +352,14 @@ function mountClassManager(core, contestCore, upsolveCore, upsolveReader, review
     }catch(e){$('#preview').replaceChildren(el('p',e.message,'bad'));}
   }
   $('#file').onchange=async()=>{
-    preview=null;sheets=[];$('#sheet').disabled=true;$('[data-action="create"]').disabled=true;
+    preview=null;sheets=[];$('#preview').replaceChildren();$('#sheet').replaceChildren();$('#sheet').disabled=true;$('[data-action="create"]').disabled=true;
     const file=$('#file').files[0];if(!file)return;
     $('#preview').textContent='正在本地读取工作簿…';
-    try {const result=await readClassXlsx(file);if($('#file').files[0]!==file)return;sheets=result;
+    try {const result=await readClassWorkbook(file);if($('#file').files[0]!==file)return;sheets=result;
       $('#sheet').replaceChildren(...sheets.map((s,i)=>option(String(i),s.name)));$('#sheet').disabled=false;
       const index=sheets.findIndex(s=>{try{core.roster(s.rows);return true;}catch{return false;}});$('#sheet').value=String(Math.max(0,index));
-      $('#class-name').value=file.name.replace(/\.xlsx$/i,'');drawPreview();
-    }catch(e){$('#preview').textContent=e.message;}
+      $('#class-name').value=file.name.replace(/\.xlsx?$/i,'');drawPreview();
+    }catch(e){if($('#file').files[0]===file)$('#preview').textContent=e.message;}
   };
   $('#sheet').onchange=drawPreview;
   $('#class-select').onchange=()=>{currentId=$('#class-select').value;resetContest();drawClasses();};

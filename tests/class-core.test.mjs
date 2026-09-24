@@ -3,6 +3,12 @@ import assert from 'node:assert/strict';
 import {createClassCore} from '../src/class-core.mjs';
 import {createContestCore} from '../src/contest-core.mjs';
 const core=createClassCore();
+test('course roster group aliases work with reordered headers and preserve administrative group priority',()=>{
+  for(const label of ['班级名称','行政班级','班级']){
+    assert.deepEqual(core.roster([[label,'序号','姓名','学号'],['测试班',1,'测试同学','00123456']]).members,[{studentId:'00123456',name:'测试同学',group:'测试班'}]);
+  }
+  assert.equal(core.roster([['班级名称','学号','姓名','班级'],['教学班','001','测试','行政班']]).members[0].group,'行政班');
+});
 test('class members sort by in-contest solved count, then student number; unmatched last',()=>{
   const rows=[{studentId:'002',userId:'2',accepted:3},{studentId:'000',userId:null,accepted:null},{studentId:'003',userId:'3',accepted:10},{studentId:'001',userId:'1',during:3,upsolved:7}];
   assert.deepEqual(core.sortMembers(rows).map(r=>r.studentId),['003','001','002','000']);

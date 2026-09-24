@@ -3,7 +3,8 @@ export function createClassCore() {
   function roster(rows) {
     const header = rows.findIndex(row => row.some(v => clean(v) === '学号') && row.some(v => clean(v) === '姓名'));
     if (header < 0) throw new Error('找不到“学号”和“姓名”列，请检查工作表。');
-    const columns = rows[header].map(clean), id = columns.indexOf('学号'), name = columns.indexOf('姓名'), group = columns.indexOf('班级');
+    const columns = rows[header].map(clean), id = columns.indexOf('学号'), name = columns.indexOf('姓名');
+    const group = ['班级', '行政班级', '班级名称'].map(label => columns.indexOf(label)).find(index => index >= 0) ?? -1;
     const members = [], seen = new Map(), warnings = [];
     for (let i = header + 1; i < rows.length; i++) {
       const row = rows[i], studentId = clean(row[id]), studentName = clean(row[name]);
