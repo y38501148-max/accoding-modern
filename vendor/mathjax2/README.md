@@ -11,4 +11,6 @@ Unmodified upstream files, concatenated in this order:
 - `config/TeX-AMS_SVG-full.js`
 - SVG TeX font metadata, then all SVG TeX glyph tables, SVG autoload modules and the TeX extensions AMScd, bbox, boldsymbol, cancel, color, enclose, mathchoice, newcommand, unicode and verb (sorted by path; components already in the combined configuration excluded)
 
+- A preloading declaration and all MathML operator tables (`jax/element/mml/optable/*.js`, sorted by path), to keep operator lookup offline as well
+
 Bundled to render formulas through the VPN without CDN scripts or web fonts. Apache-2.0; see LICENSE.

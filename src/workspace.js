@@ -52,7 +52,7 @@ function mountWorkspace() {
     const control=make('button','am-button am-board-control','赛事统计看板');control.prepend(workspaceIcon('grid'));control.type='button';control.onclick=()=>launch.click();
     const sync=()=>{control.hidden=launch.hidden;};sync();new MutationObserver(sync).observe(launch,{attributes:true,attributeFilter:['hidden']});slots.append(control);
   }
-  if(activation){activation.dataset.docked='true';activation.shadowRoot.querySelector('.launch button').prepend(workspaceIcon('problem'));slots.append(activation);}
+  if(activation){activation.dataset.docked='true';for(const button of activation.shadowRoot.querySelectorAll('.launch button'))button.prepend(workspaceIcon('problem'));slots.append(activation);}
   if(classHost){classHost.dataset.docked='true';}
   const updates=document.getElementById('am-update-notice');if(updates){updates.dataset.docked='true';if(submissionRoot)submissionRoot.querySelector('.submission-content').prepend(updates);else header.after(updates);}
   // Docking styles live in each ShadowRoot, so the original interface keeps its tools.

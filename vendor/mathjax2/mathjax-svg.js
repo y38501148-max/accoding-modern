@@ -2321,3 +2321,384 @@ MathJax.Hub.Insert(MathJax.OutputJax.SVG.FONTDATA.FONTS.MathJax_Typewriter,{305:
  */
 
 (function(a){var n="2.7.7";var m=a.FONTDATA.DELIMITERS;var h="MathJax_Main",i="MathJax_Main-bold",k="MathJax_AMS",f="MathJax_Size1",b="MathJax_Size4";var l="H",g="V";var j=[8722,h,0,0,0,-0.31,-0.31];var d=[61,h,0,0,0,0,0.1];var e={61:{dir:l,HW:[[767,h]],stretch:{rep:[61,h]}},8606:{dir:l,HW:[[1000,k]],stretch:{left:[8606,k],rep:j}},8608:{dir:l,HW:[[1000,k]],stretch:{right:[8608,k],rep:j}},8612:{dir:l,HW:[],stretch:{min:1,left:[8592,h],rep:j,right:[8739,f,0,-0.05,0.9]}},8613:{dir:g,HW:[],stretch:{min:0.6,bot:[8869,i,0,0,0.75],ext:[9168,f],top:[8593,f]}},8614:{dir:l,HW:[[1000,h]],stretch:{left:[8739,f,-0.09,-0.05,0.9],rep:j,right:[8594,h]}},8615:{dir:g,HW:[],stretch:{min:0.6,top:[8868,i,0,0,0.75],ext:[9168,f],bot:[8595,f]}},8624:{dir:g,HW:[[722,k]],stretch:{top:[8624,k],ext:[9168,f,0.097]}},8625:{dir:g,HW:[[722,k]],stretch:{top:[8625,k,0.27],ext:[9168,f]}},8636:{dir:l,HW:[[1000,h]],stretch:{left:[8636,h],rep:j}},8637:{dir:l,HW:[[1000,h]],stretch:{left:[8637,h],rep:j}},8638:{dir:g,HW:[[888,k]],stretch:{top:[8638,k,0.12,0,1.1],ext:[9168,f]}},8639:{dir:g,HW:[[888,k]],stretch:{top:[8639,k,0.12,0,1.1],ext:[9168,f]}},8640:{dir:l,HW:[[1000,h]],stretch:{right:[8640,h],rep:j}},8641:{dir:l,HW:[[1000,h]],stretch:{right:[8641,h],rep:j}},8642:{dir:g,HW:[[888,k]],stretch:{bot:[8642,k,0.12,0,1.1],ext:[9168,f]}},8643:{dir:g,HW:[[888,k]],stretch:{bot:[8643,k,0.12,0,1.1],ext:[9168,f]}},8666:{dir:l,HW:[[1000,k]],stretch:{left:[8666,k],rep:[8801,h]}},8667:{dir:l,HW:[[1000,k]],stretch:{right:[8667,k],rep:[8801,h]}},9140:{dir:l,HW:[],stretch:{min:0.5,left:[9484,k,0,-0.1],rep:[8722,h,0,0.325],right:[9488,k,0,-0.1]}},9141:{dir:l,HW:[],stretch:{min:0.5,left:[9492,k,0,0.26],rep:[8722,h,0,0,0,0.25],right:[9496,k,0,0.26]}},9180:{dir:l,HW:[[778,k,0,8994],[100,h,0,8994]],stretch:{left:[57680,b],rep:[57684,b],right:[57681,b]}},9181:{dir:l,HW:[[778,k,0,8995],[100,h,0,8995]],stretch:{left:[57682,b],rep:[57684,b],right:[57683,b]}},9184:{dir:l,HW:[],stretch:{min:1.25,left:[714,h,-0.1],rep:[713,h,-0.05,0.13],right:[715,h],fullExtenders:true}},9185:{dir:l,HW:[],stretch:{min:1.5,left:[715,h,-0.1,0.1],rep:[713,h,-0.1],right:[714,h,-0.1,0.1],fullExtenders:true}},10502:{dir:l,HW:[],stretch:{min:1,left:[8656,h],rep:d,right:[8739,f,0,-0.1]}},10503:{dir:l,HW:[],stretch:{min:0.7,left:[8872,k,0,-0.12],rep:d,right:[8658,h]}},10574:{dir:l,HW:[],stretch:{min:0.5,left:[8636,h],rep:j,right:[8640,h]}},10575:{dir:g,HW:[],stretch:{min:0.5,top:[8638,k,0.12,0,1.1],ext:[9168,f],bot:[8642,k,0.12,0,1.1]}},10576:{dir:l,HW:[],stretch:{min:0.5,left:[8637,h],rep:j,right:[8641,h]}},10577:{dir:g,HW:[],stretch:{min:0.5,top:[8639,k,0.12,0,1.1],ext:[9168,f],bot:[8643,k,0.12,0,1.1]}},10586:{dir:l,HW:[],stretch:{min:1,left:[8636,h],rep:j,right:[8739,f,0,-0.05,0.9]}},10587:{dir:l,HW:[],stretch:{min:1,left:[8739,f,-0.05,-0.05,0.9],rep:j,right:[8640,h]}},10588:{dir:g,HW:[],stretch:{min:0.7,bot:[8869,i,0,0,0.75],ext:[9168,f],top:[8638,k,0.12,0,1.1]}},10589:{dir:g,HW:[],stretch:{min:0.7,top:[8868,i,0,0,0.75],ext:[9168,f],bot:[8642,k,0.12,0,1.1]}},10590:{dir:l,HW:[],stretch:{min:1,left:[8637,h],rep:j,right:[8739,f,0,-0.05,0.9]}},10591:{dir:l,HW:[],stretch:{min:1,left:[8739,f,-0.05,-0.05,0.9],rep:j,right:[8641,h]}},10592:{dir:g,HW:[],stretch:{min:0.7,bot:[8869,i,0,0,0.75],ext:[9168,f],top:[8639,k,0.12,0,1.1]}},10593:{dir:g,HW:[],stretch:{min:0.7,top:[8868,i,0,0,0.75],ext:[9168,f],bot:[8643,k,0.12,0,1.1]}}};for(var c in e){if(e.hasOwnProperty(c)){m[c]=e[c]}}MathJax.Ajax.loadComplete(a.fontDir+"/fontdata-extra.js")})(MathJax.OutputJax.SVG);
+
+MathJax.Ajax.Preloading("[MathJax]/jax/element/mml/optable/Arrows.js","[MathJax]/jax/element/mml/optable/BasicLatin.js","[MathJax]/jax/element/mml/optable/CombDiacritMarks.js","[MathJax]/jax/element/mml/optable/CombDiactForSymbols.js","[MathJax]/jax/element/mml/optable/Dingbats.js","[MathJax]/jax/element/mml/optable/GeneralPunctuation.js","[MathJax]/jax/element/mml/optable/GeometricShapes.js","[MathJax]/jax/element/mml/optable/GreekAndCoptic.js","[MathJax]/jax/element/mml/optable/Latin1Supplement.js","[MathJax]/jax/element/mml/optable/LetterlikeSymbols.js","[MathJax]/jax/element/mml/optable/MathOperators.js","[MathJax]/jax/element/mml/optable/MiscMathSymbolsA.js","[MathJax]/jax/element/mml/optable/MiscMathSymbolsB.js","[MathJax]/jax/element/mml/optable/MiscSymbolsAndArrows.js","[MathJax]/jax/element/mml/optable/MiscTechnical.js","[MathJax]/jax/element/mml/optable/SpacingModLetters.js","[MathJax]/jax/element/mml/optable/SuppMathOperators.js","[MathJax]/jax/element/mml/optable/SupplementalArrowsA.js","[MathJax]/jax/element/mml/optable/SupplementalArrowsB.js");
+/*
+ *  /MathJax-v2/jax/element/mml/optable/Arrows.js
+ *
+ *  Copyright (c) 2009-2018 The MathJax Consortium
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+(function(a){var c=a.mo.OPTYPES;var b=a.TEXCLASS;MathJax.Hub.Insert(a.mo.prototype,{OPTABLE:{infix:{"\u219A":c.RELACCENT,"\u219B":c.RELACCENT,"\u219C":c.WIDEREL,"\u219D":c.WIDEREL,"\u219E":c.WIDEREL,"\u219F":c.WIDEREL,"\u21A0":c.WIDEREL,"\u21A1":c.RELSTRETCH,"\u21A2":c.WIDEREL,"\u21A3":c.WIDEREL,"\u21A4":c.WIDEREL,"\u21A5":c.RELSTRETCH,"\u21A7":c.RELSTRETCH,"\u21A8":c.RELSTRETCH,"\u21AB":c.WIDEREL,"\u21AC":c.WIDEREL,"\u21AD":c.WIDEREL,"\u21AE":c.RELACCENT,"\u21AF":c.RELSTRETCH,"\u21B0":c.RELSTRETCH,"\u21B1":c.RELSTRETCH,"\u21B2":c.RELSTRETCH,"\u21B3":c.RELSTRETCH,"\u21B4":c.RELSTRETCH,"\u21B5":c.RELSTRETCH,"\u21B6":c.RELACCENT,"\u21B7":c.RELACCENT,"\u21B8":c.REL,"\u21B9":c.WIDEREL,"\u21BA":c.REL,"\u21BB":c.REL,"\u21BE":c.RELSTRETCH,"\u21BF":c.RELSTRETCH,"\u21C2":c.RELSTRETCH,"\u21C3":c.RELSTRETCH,"\u21C4":c.WIDEREL,"\u21C5":c.RELSTRETCH,"\u21C6":c.WIDEREL,"\u21C7":c.WIDEREL,"\u21C8":c.RELSTRETCH,"\u21C9":c.WIDEREL,"\u21CA":c.RELSTRETCH,"\u21CB":c.WIDEREL,"\u21CD":c.RELACCENT,"\u21CE":c.RELACCENT,"\u21CF":c.RELACCENT,"\u21D6":c.RELSTRETCH,"\u21D7":c.RELSTRETCH,"\u21D8":c.RELSTRETCH,"\u21D9":c.RELSTRETCH,"\u21DA":c.WIDEREL,"\u21DB":c.WIDEREL,"\u21DC":c.WIDEREL,"\u21DD":c.WIDEREL,"\u21DE":c.REL,"\u21DF":c.REL,"\u21E0":c.WIDEREL,"\u21E1":c.RELSTRETCH,"\u21E2":c.WIDEREL,"\u21E3":c.RELSTRETCH,"\u21E4":c.WIDEREL,"\u21E5":c.WIDEREL,"\u21E6":c.WIDEREL,"\u21E7":c.RELSTRETCH,"\u21E8":c.WIDEREL,"\u21E9":c.RELSTRETCH,"\u21EA":c.RELSTRETCH,"\u21EB":c.RELSTRETCH,"\u21EC":c.RELSTRETCH,"\u21ED":c.RELSTRETCH,"\u21EE":c.RELSTRETCH,"\u21EF":c.RELSTRETCH,"\u21F0":c.WIDEREL,"\u21F1":c.REL,"\u21F2":c.REL,"\u21F3":c.RELSTRETCH,"\u21F4":c.RELACCENT,"\u21F5":c.RELSTRETCH,"\u21F6":c.WIDEREL,"\u21F7":c.RELACCENT,"\u21F8":c.RELACCENT,"\u21F9":c.RELACCENT,"\u21FA":c.RELACCENT,"\u21FB":c.RELACCENT,"\u21FC":c.RELACCENT,"\u21FD":c.WIDEREL,"\u21FE":c.WIDEREL,"\u21FF":c.WIDEREL}}});MathJax.Ajax.loadComplete(a.optableDir+"/Arrows.js")})(MathJax.ElementJax.mml);
+
+/*
+ *  /MathJax-v2/jax/element/mml/optable/BasicLatin.js
+ *
+ *  Copyright (c) 2009-2018 The MathJax Consortium
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+(function(a){var c=a.mo.OPTYPES;var b=a.TEXCLASS;MathJax.Hub.Insert(a.mo.prototype,{OPTABLE:{prefix:{"||":[0,0,b.BIN,{fence:true,stretchy:true,symmetric:true}],"|||":[0,0,b.ORD,{fence:true,stretchy:true,symmetric:true}]},postfix:{"!!":[1,0,b.BIN],"'":c.ACCENT,"++":[0,0,b.BIN],"--":[0,0,b.BIN],"..":[0,0,b.BIN],"...":c.ORD,"||":[0,0,b.BIN,{fence:true,stretchy:true,symmetric:true}],"|||":[0,0,b.ORD,{fence:true,stretchy:true,symmetric:true}]},infix:{"!=":c.BIN4,"&&":c.BIN4,"**":[1,1,b.BIN],"*=":c.BIN4,"+=":c.BIN4,"-=":c.BIN4,"->":c.BIN5,"//":[1,1,b.BIN],"/=":c.BIN4,":=":c.BIN4,"<=":c.BIN5,"<>":[1,1,b.BIN],"==":c.BIN4,">=":c.BIN5,"@":c.ORD11,"||":[2,2,b.BIN,{fence:true,stretchy:true,symmetric:true}],"|||":[2,2,b.ORD,{fence:true,stretchy:true,symmetric:true}]}}});MathJax.Ajax.loadComplete(a.optableDir+"/BasicLatin.js")})(MathJax.ElementJax.mml);
+
+/*
+ *  /MathJax-v2/jax/element/mml/optable/CombDiacritMarks.js
+ *
+ *  Copyright (c) 2009-2018 The MathJax Consortium
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+(function(a){var c=a.mo.OPTYPES;var b=a.TEXCLASS;MathJax.Hub.Insert(a.mo.prototype,{OPTABLE:{postfix:{"\u0311":c.ACCENT}}});MathJax.Ajax.loadComplete(a.optableDir+"/CombDiacritMarks.js")})(MathJax.ElementJax.mml);
+
+/*
+ *  /MathJax-v2/jax/element/mml/optable/CombDiactForSymbols.js
+ *
+ *  Copyright (c) 2009-2018 The MathJax Consortium
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+(function(a){var c=a.mo.OPTYPES;var b=a.TEXCLASS;MathJax.Hub.Insert(a.mo.prototype,{OPTABLE:{postfix:{"\u20DB":c.ACCENT,"\u20DC":c.ACCENT}}});MathJax.Ajax.loadComplete(a.optableDir+"/CombDiactForSymbols.js")})(MathJax.ElementJax.mml);
+
+/*
+ *  /MathJax-v2/jax/element/mml/optable/Dingbats.js
+ *
+ *  Copyright (c) 2009-2018 The MathJax Consortium
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+(function(a){var c=a.mo.OPTYPES;var b=a.TEXCLASS;MathJax.Hub.Insert(a.mo.prototype,{OPTABLE:{prefix:{"\u2772":c.OPEN},postfix:{"\u2773":c.CLOSE}}});MathJax.Ajax.loadComplete(a.optableDir+"/Dingbats.js")})(MathJax.ElementJax.mml);
+
+/*
+ *  /MathJax-v2/jax/element/mml/optable/GeneralPunctuation.js
+ *
+ *  Copyright (c) 2009-2018 The MathJax Consortium
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+(function(a){var c=a.mo.OPTYPES;var b=a.TEXCLASS;MathJax.Hub.Insert(a.mo.prototype,{OPTABLE:{prefix:{"\u2016":[0,0,b.ORD,{fence:true,stretchy:true}],"\u2018":[0,0,b.OPEN,{fence:true}],"\u201C":[0,0,b.OPEN,{fence:true}]},postfix:{"\u2016":[0,0,b.ORD,{fence:true,stretchy:true}],"\u2019":[0,0,b.CLOSE,{fence:true}],"\u201D":[0,0,b.CLOSE,{fence:true}]}}});MathJax.Ajax.loadComplete(a.optableDir+"/GeneralPunctuation.js")})(MathJax.ElementJax.mml);
+
+/*
+ *  /MathJax-v2/jax/element/mml/optable/GeometricShapes.js
+ *
+ *  Copyright (c) 2009-2018 The MathJax Consortium
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+(function(a){var c=a.mo.OPTYPES;var b=a.TEXCLASS;MathJax.Hub.Insert(a.mo.prototype,{OPTABLE:{infix:{"\u25A0":c.BIN3,"\u25A1":c.BIN3,"\u25AA":c.BIN3,"\u25AB":c.BIN3,"\u25AD":c.BIN3,"\u25AE":c.BIN3,"\u25AF":c.BIN3,"\u25B0":c.BIN3,"\u25B1":c.BIN3,"\u25B2":c.BIN4,"\u25B4":c.BIN4,"\u25B6":c.BIN4,"\u25B7":c.BIN4,"\u25B8":c.BIN4,"\u25BC":c.BIN4,"\u25BE":c.BIN4,"\u25C0":c.BIN4,"\u25C1":c.BIN4,"\u25C2":c.BIN4,"\u25C4":c.BIN4,"\u25C5":c.BIN4,"\u25C6":c.BIN4,"\u25C7":c.BIN4,"\u25C8":c.BIN4,"\u25C9":c.BIN4,"\u25CC":c.BIN4,"\u25CD":c.BIN4,"\u25CE":c.BIN4,"\u25CF":c.BIN4,"\u25D6":c.BIN4,"\u25D7":c.BIN4,"\u25E6":c.BIN4}}});MathJax.Ajax.loadComplete(a.optableDir+"/GeometricShapes.js")})(MathJax.ElementJax.mml);
+
+/*
+ *  /MathJax-v2/jax/element/mml/optable/GreekAndCoptic.js
+ *
+ *  Copyright (c) 2009-2018 The MathJax Consortium
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+(function(a){var c=a.mo.OPTYPES;var b=a.TEXCLASS;MathJax.Hub.Insert(a.mo.prototype,{OPTABLE:{infix:{"\u03F6":c.REL}}});MathJax.Ajax.loadComplete(a.optableDir+"/GreekAndCoptic.js")})(MathJax.ElementJax.mml);
+
+/*
+ *  /MathJax-v2/jax/element/mml/optable/Latin1Supplement.js
+ *
+ *  Copyright (c) 2009-2018 The MathJax Consortium
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+(function(a){var c=a.mo.OPTYPES;var b=a.TEXCLASS;MathJax.Hub.Insert(a.mo.prototype,{OPTABLE:{postfix:{"\u00B0":c.ORD,"\u00B4":c.ACCENT,"\u00B8":c.ACCENT}}});MathJax.Ajax.loadComplete(a.optableDir+"/Latin1Supplement.js")})(MathJax.ElementJax.mml);
+
+/*
+ *  /MathJax-v2/jax/element/mml/optable/LetterlikeSymbols.js
+ *
+ *  Copyright (c) 2009-2018 The MathJax Consortium
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+(function(a){var c=a.mo.OPTYPES;var b=a.TEXCLASS;MathJax.Hub.Insert(a.mo.prototype,{OPTABLE:{prefix:{"\u2145":c.ORD21,"\u2146":[2,0,b.ORD]}}});MathJax.Ajax.loadComplete(a.optableDir+"/LetterlikeSymbols.js")})(MathJax.ElementJax.mml);
+
+/*
+ *  /MathJax-v2/jax/element/mml/optable/MathOperators.js
+ *
+ *  Copyright (c) 2009-2018 The MathJax Consortium
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+(function(a){var c=a.mo.OPTYPES;var b=a.TEXCLASS;MathJax.Hub.Insert(a.mo.prototype,{OPTABLE:{prefix:{"\u2204":c.ORD21,"\u221B":c.ORD11,"\u221C":c.ORD11,"\u2221":c.ORD,"\u2222":c.ORD,"\u222C":c.INTEGRAL,"\u222D":c.INTEGRAL,"\u222F":c.INTEGRAL,"\u2230":c.INTEGRAL,"\u2231":c.INTEGRAL,"\u2232":c.INTEGRAL,"\u2233":c.INTEGRAL},infix:{"\u2201":[1,2,b.ORD],"\u2206":c.BIN3,"\u220A":c.REL,"\u220C":c.REL,"\u220D":c.REL,"\u220E":c.BIN3,"\u2214":c.BIN4,"\u221F":c.REL,"\u2224":c.REL,"\u2226":c.REL,"\u2234":c.REL,"\u2235":c.REL,"\u2236":c.REL,"\u2237":c.REL,"\u2238":c.BIN4,"\u2239":c.REL,"\u223A":c.BIN4,"\u223B":c.REL,"\u223D":c.REL,"\u223D\u0331":c.BIN3,"\u223E":c.REL,"\u223F":c.BIN3,"\u2241":c.REL,"\u2242":c.REL,"\u2242\u0338":c.REL,"\u2244":c.REL,"\u2246":c.REL,"\u2247":c.REL,"\u2249":c.REL,"\u224A":c.REL,"\u224B":c.REL,"\u224C":c.REL,"\u224E":c.REL,"\u224E\u0338":c.REL,"\u224F":c.REL,"\u224F\u0338":c.REL,"\u2251":c.REL,"\u2252":c.REL,"\u2253":c.REL,"\u2254":c.REL,"\u2255":c.REL,"\u2256":c.REL,"\u2257":c.REL,"\u2258":c.REL,"\u2259":c.REL,"\u225A":c.REL,"\u225C":c.REL,"\u225D":c.REL,"\u225E":c.REL,"\u225F":c.REL,"\u2262":c.REL,"\u2263":c.REL,"\u2266":c.REL,"\u2266\u0338":c.REL,"\u2267":c.REL,"\u2268":c.REL,"\u2269":c.REL,"\u226A\u0338":c.REL,"\u226B\u0338":c.REL,"\u226C":c.REL,"\u226D":c.REL,"\u226E":c.REL,"\u226F":c.REL,"\u2270":c.REL,"\u2271":c.REL,"\u2272":c.REL,"\u2273":c.REL,"\u2274":c.REL,"\u2275":c.REL,"\u2276":c.REL,"\u2277":c.REL,"\u2278":c.REL,"\u2279":c.REL,"\u227C":c.REL,"\u227D":c.REL,"\u227E":c.REL,"\u227F":c.REL,"\u227F\u0338":c.REL,"\u2280":c.REL,"\u2281":c.REL,"\u2282\u20D2":c.REL,"\u2283\u20D2":c.REL,"\u2284":c.REL,"\u2285":c.REL,"\u2288":c.REL,"\u2289":c.REL,"\u228A":c.REL,"\u228B":c.REL,"\u228C":c.BIN4,"\u228D":c.BIN4,"\u228F":c.REL,"\u228F\u0338":c.REL,"\u2290":c.REL,"\u2290\u0338":c.REL,"\u229A":c.BIN4,"\u229B":c.BIN4,"\u229C":c.BIN4,"\u229D":c.BIN4,"\u229E":c.BIN4,"\u229F":c.BIN4,"\u22A0":c.BIN4,"\u22A1":c.BIN4,"\u22A6":c.REL,"\u22A7":c.REL,"\u22A9":c.REL,"\u22AA":c.REL,"\u22AB":c.REL,"\u22AC":c.REL,"\u22AD":c.REL,"\u22AE":c.REL,"\u22AF":c.REL,"\u22B0":c.REL,"\u22B1":c.REL,"\u22B2":c.REL,"\u22B3":c.REL,"\u22B4":c.REL,"\u22B5":c.REL,"\u22B6":c.REL,"\u22B7":c.REL,"\u22B8":c.REL,"\u22B9":c.REL,"\u22BA":c.BIN4,"\u22BB":c.BIN4,"\u22BC":c.BIN4,"\u22BD":c.BIN4,"\u22BE":c.BIN3,"\u22BF":c.BIN3,"\u22C7":c.BIN4,"\u22C9":c.BIN4,"\u22CA":c.BIN4,"\u22CB":c.BIN4,"\u22CC":c.BIN4,"\u22CD":c.REL,"\u22CE":c.BIN4,"\u22CF":c.BIN4,"\u22D0":c.REL,"\u22D1":c.REL,"\u22D2":c.BIN4,"\u22D3":c.BIN4,"\u22D4":c.REL,"\u22D5":c.REL,"\u22D6":c.REL,"\u22D7":c.REL,"\u22D8":c.REL,"\u22D9":c.REL,"\u22DA":c.REL,"\u22DB":c.REL,"\u22DC":c.REL,"\u22DD":c.REL,"\u22DE":c.REL,"\u22DF":c.REL,"\u22E0":c.REL,"\u22E1":c.REL,"\u22E2":c.REL,"\u22E3":c.REL,"\u22E4":c.REL,"\u22E5":c.REL,"\u22E6":c.REL,"\u22E7":c.REL,"\u22E8":c.REL,"\u22E9":c.REL,"\u22EA":c.REL,"\u22EB":c.REL,"\u22EC":c.REL,"\u22ED":c.REL,"\u22F0":c.REL,"\u22F2":c.REL,"\u22F3":c.REL,"\u22F4":c.REL,"\u22F5":c.REL,"\u22F6":c.REL,"\u22F7":c.REL,"\u22F8":c.REL,"\u22F9":c.REL,"\u22FA":c.REL,"\u22FB":c.REL,"\u22FC":c.REL,"\u22FD":c.REL,"\u22FE":c.REL,"\u22FF":c.REL}}});MathJax.Ajax.loadComplete(a.optableDir+"/MathOperators.js")})(MathJax.ElementJax.mml);
+
+/*
+ *  /MathJax-v2/jax/element/mml/optable/MiscMathSymbolsA.js
+ *
+ *  Copyright (c) 2009-2018 The MathJax Consortium
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+(function(a){var c=a.mo.OPTYPES;var b=a.TEXCLASS;MathJax.Hub.Insert(a.mo.prototype,{OPTABLE:{prefix:{"\u27E6":c.OPEN,"\u27EA":c.OPEN,"\u27EC":c.OPEN},postfix:{"\u27E7":c.CLOSE,"\u27EB":c.CLOSE,"\u27ED":c.CLOSE}}});MathJax.Ajax.loadComplete(a.optableDir+"/MiscMathSymbolsA.js")})(MathJax.ElementJax.mml);
+
+/*
+ *  /MathJax-v2/jax/element/mml/optable/MiscMathSymbolsB.js
+ *
+ *  Copyright (c) 2009-2018 The MathJax Consortium
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+(function(a){var c=a.mo.OPTYPES;var b=a.TEXCLASS;MathJax.Hub.Insert(a.mo.prototype,{OPTABLE:{prefix:{"\u2980":[0,0,b.ORD,{fence:true,stretchy:true}],"\u2983":c.OPEN,"\u2985":c.OPEN,"\u2987":c.OPEN,"\u2989":c.OPEN,"\u298B":c.OPEN,"\u298D":c.OPEN,"\u298F":c.OPEN,"\u2991":c.OPEN,"\u2993":c.OPEN,"\u2995":c.OPEN,"\u2997":c.OPEN,"\u29FC":c.OPEN},postfix:{"\u2980":[0,0,b.ORD,{fence:true,stretchy:true}],"\u2984":c.CLOSE,"\u2986":c.CLOSE,"\u2988":c.CLOSE,"\u298A":c.CLOSE,"\u298C":c.CLOSE,"\u298E":c.CLOSE,"\u2990":c.CLOSE,"\u2992":c.CLOSE,"\u2994":c.CLOSE,"\u2996":c.CLOSE,"\u2998":c.CLOSE,"\u29FD":c.CLOSE},infix:{"\u2981":c.BIN3,"\u2982":c.BIN3,"\u2999":c.BIN3,"\u299A":c.BIN3,"\u299B":c.BIN3,"\u299C":c.BIN3,"\u299D":c.BIN3,"\u299E":c.BIN3,"\u299F":c.BIN3,"\u29A0":c.BIN3,"\u29A1":c.BIN3,"\u29A2":c.BIN3,"\u29A3":c.BIN3,"\u29A4":c.BIN3,"\u29A5":c.BIN3,"\u29A6":c.BIN3,"\u29A7":c.BIN3,"\u29A8":c.BIN3,"\u29A9":c.BIN3,"\u29AA":c.BIN3,"\u29AB":c.BIN3,"\u29AC":c.BIN3,"\u29AD":c.BIN3,"\u29AE":c.BIN3,"\u29AF":c.BIN3,"\u29B0":c.BIN3,"\u29B1":c.BIN3,"\u29B2":c.BIN3,"\u29B3":c.BIN3,"\u29B4":c.BIN3,"\u29B5":c.BIN3,"\u29B6":c.BIN4,"\u29B7":c.BIN4,"\u29B8":c.BIN4,"\u29B9":c.BIN4,"\u29BA":c.BIN4,"\u29BB":c.BIN4,"\u29BC":c.BIN4,"\u29BD":c.BIN4,"\u29BE":c.BIN4,"\u29BF":c.BIN4,"\u29C0":c.REL,"\u29C1":c.REL,"\u29C2":c.BIN3,"\u29C3":c.BIN3,"\u29C4":c.BIN4,"\u29C5":c.BIN4,"\u29C6":c.BIN4,"\u29C7":c.BIN4,"\u29C8":c.BIN4,"\u29C9":c.BIN3,"\u29CA":c.BIN3,"\u29CB":c.BIN3,"\u29CC":c.BIN3,"\u29CD":c.BIN3,"\u29CE":c.REL,"\u29CF":c.REL,"\u29CF\u0338":c.REL,"\u29D0":c.REL,"\u29D0\u0338":c.REL,"\u29D1":c.REL,"\u29D2":c.REL,"\u29D3":c.REL,"\u29D4":c.REL,"\u29D5":c.REL,"\u29D6":c.BIN4,"\u29D7":c.BIN4,"\u29D8":c.BIN3,"\u29D9":c.BIN3,"\u29DB":c.BIN3,"\u29DC":c.BIN3,"\u29DD":c.BIN3,"\u29DE":c.REL,"\u29DF":c.BIN3,"\u29E0":c.BIN3,"\u29E1":c.REL,"\u29E2":c.BIN4,"\u29E3":c.REL,"\u29E4":c.REL,"\u29E5":c.REL,"\u29E6":c.REL,"\u29E7":c.BIN3,"\u29E8":c.BIN3,"\u29E9":c.BIN3,"\u29EA":c.BIN3,"\u29EB":c.BIN3,"\u29EC":c.BIN3,"\u29ED":c.BIN3,"\u29EE":c.BIN3,"\u29EF":c.BIN3,"\u29F0":c.BIN3,"\u29F1":c.BIN3,"\u29F2":c.BIN3,"\u29F3":c.BIN3,"\u29F4":c.REL,"\u29F5":c.BIN4,"\u29F6":c.BIN4,"\u29F7":c.BIN4,"\u29F8":c.BIN3,"\u29F9":c.BIN3,"\u29FA":c.BIN3,"\u29FB":c.BIN3,"\u29FE":c.BIN4,"\u29FF":c.BIN4}}});MathJax.Ajax.loadComplete(a.optableDir+"/MiscMathSymbolsB.js")})(MathJax.ElementJax.mml);
+
+/*
+ *  /MathJax-v2/jax/element/mml/optable/MiscSymbolsAndArrows.js
+ *
+ *  Copyright (c) 2009-2018 The MathJax Consortium
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+(function(a){var c=a.mo.OPTYPES;var b=a.TEXCLASS;MathJax.Hub.Insert(a.mo.prototype,{OPTABLE:{infix:{"\u2B45":c.RELSTRETCH,"\u2B46":c.RELSTRETCH}}});MathJax.Ajax.loadComplete(a.optableDir+"/MiscSymbolsAndArrows.js")})(MathJax.ElementJax.mml);
+
+/*
+ *  /MathJax-v2/jax/element/mml/optable/MiscTechnical.js
+ *
+ *  Copyright (c) 2009-2018 The MathJax Consortium
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+(function(a){var c=a.mo.OPTYPES;var b=a.TEXCLASS;MathJax.Hub.Insert(a.mo.prototype,{OPTABLE:{postfix:{"\u23B4":c.WIDEACCENT,"\u23B5":c.WIDEACCENT,"\u23DC":c.WIDEACCENT,"\u23DD":c.WIDEACCENT,"\u23E0":c.WIDEACCENT,"\u23E1":c.WIDEACCENT}}});MathJax.Ajax.loadComplete(a.optableDir+"/MiscTechnical.js")})(MathJax.ElementJax.mml);
+
+/*
+ *  /MathJax-v2/jax/element/mml/optable/SpacingModLetters.js
+ *
+ *  Copyright (c) 2009-2018 The MathJax Consortium
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+(function(a){var c=a.mo.OPTYPES;var b=a.TEXCLASS;MathJax.Hub.Insert(a.mo.prototype,{OPTABLE:{postfix:{"\u02CD":c.WIDEACCENT,"\u02DA":c.ACCENT,"\u02DD":c.ACCENT,"\u02F7":c.WIDEACCENT}}});MathJax.Ajax.loadComplete(a.optableDir+"/SpacingModLetters.js")})(MathJax.ElementJax.mml);
+
+/*
+ *  /MathJax-v2/jax/element/mml/optable/SuppMathOperators.js
+ *
+ *  Copyright (c) 2009-2018 The MathJax Consortium
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+(function(a){var c=a.mo.OPTYPES;var b=a.TEXCLASS;MathJax.Hub.Insert(a.mo.prototype,{OPTABLE:{prefix:{"\u2A03":c.OP,"\u2A05":c.OP,"\u2A07":c.OP,"\u2A08":c.OP,"\u2A09":c.OP,"\u2A0A":c.OP,"\u2A0B":c.INTEGRAL2,"\u2A0C":c.INTEGRAL,"\u2A0D":c.INTEGRAL2,"\u2A0E":c.INTEGRAL2,"\u2A0F":c.INTEGRAL2,"\u2A10":c.OP,"\u2A11":c.OP,"\u2A12":c.OP,"\u2A13":c.OP,"\u2A14":c.OP,"\u2A15":c.INTEGRAL2,"\u2A16":c.INTEGRAL2,"\u2A17":c.INTEGRAL2,"\u2A18":c.INTEGRAL2,"\u2A19":c.INTEGRAL2,"\u2A1A":c.INTEGRAL2,"\u2A1B":c.INTEGRAL2,"\u2A1C":c.INTEGRAL2,"\u2AFC":c.OP,"\u2AFF":c.OP},infix:{"\u2A1D":c.BIN3,"\u2A1E":c.BIN3,"\u2A1F":c.BIN3,"\u2A20":c.BIN3,"\u2A21":c.BIN3,"\u2A22":c.BIN4,"\u2A23":c.BIN4,"\u2A24":c.BIN4,"\u2A25":c.BIN4,"\u2A26":c.BIN4,"\u2A27":c.BIN4,"\u2A28":c.BIN4,"\u2A29":c.BIN4,"\u2A2A":c.BIN4,"\u2A2B":c.BIN4,"\u2A2C":c.BIN4,"\u2A2D":c.BIN4,"\u2A2E":c.BIN4,"\u2A30":c.BIN4,"\u2A31":c.BIN4,"\u2A32":c.BIN4,"\u2A33":c.BIN4,"\u2A34":c.BIN4,"\u2A35":c.BIN4,"\u2A36":c.BIN4,"\u2A37":c.BIN4,"\u2A38":c.BIN4,"\u2A39":c.BIN4,"\u2A3A":c.BIN4,"\u2A3B":c.BIN4,"\u2A3C":c.BIN4,"\u2A3D":c.BIN4,"\u2A3E":c.BIN4,"\u2A40":c.BIN4,"\u2A41":c.BIN4,"\u2A42":c.BIN4,"\u2A43":c.BIN4,"\u2A44":c.BIN4,"\u2A45":c.BIN4,"\u2A46":c.BIN4,"\u2A47":c.BIN4,"\u2A48":c.BIN4,"\u2A49":c.BIN4,"\u2A4A":c.BIN4,"\u2A4B":c.BIN4,"\u2A4C":c.BIN4,"\u2A4D":c.BIN4,"\u2A4E":c.BIN4,"\u2A4F":c.BIN4,"\u2A50":c.BIN4,"\u2A51":c.BIN4,"\u2A52":c.BIN4,"\u2A53":c.BIN4,"\u2A54":c.BIN4,"\u2A55":c.BIN4,"\u2A56":c.BIN4,"\u2A57":c.BIN4,"\u2A58":c.BIN4,"\u2A59":c.REL,"\u2A5A":c.BIN4,"\u2A5B":c.BIN4,"\u2A5C":c.BIN4,"\u2A5D":c.BIN4,"\u2A5E":c.BIN4,"\u2A5F":c.BIN4,"\u2A60":c.BIN4,"\u2A61":c.BIN4,"\u2A62":c.BIN4,"\u2A63":c.BIN4,"\u2A64":c.BIN4,"\u2A65":c.BIN4,"\u2A66":c.REL,"\u2A67":c.REL,"\u2A68":c.REL,"\u2A69":c.REL,"\u2A6A":c.REL,"\u2A6B":c.REL,"\u2A6C":c.REL,"\u2A6D":c.REL,"\u2A6E":c.REL,"\u2A6F":c.REL,"\u2A70":c.REL,"\u2A71":c.BIN4,"\u2A72":c.BIN4,"\u2A73":c.REL,"\u2A74":c.REL,"\u2A75":c.REL,"\u2A76":c.REL,"\u2A77":c.REL,"\u2A78":c.REL,"\u2A79":c.REL,"\u2A7A":c.REL,"\u2A7B":c.REL,"\u2A7C":c.REL,"\u2A7D":c.REL,"\u2A7D\u0338":c.REL,"\u2A7E":c.REL,"\u2A7E\u0338":c.REL,"\u2A7F":c.REL,"\u2A80":c.REL,"\u2A81":c.REL,"\u2A82":c.REL,"\u2A83":c.REL,"\u2A84":c.REL,"\u2A85":c.REL,"\u2A86":c.REL,"\u2A87":c.REL,"\u2A88":c.REL,"\u2A89":c.REL,"\u2A8A":c.REL,"\u2A8B":c.REL,"\u2A8C":c.REL,"\u2A8D":c.REL,"\u2A8E":c.REL,"\u2A8F":c.REL,"\u2A90":c.REL,"\u2A91":c.REL,"\u2A92":c.REL,"\u2A93":c.REL,"\u2A94":c.REL,"\u2A95":c.REL,"\u2A96":c.REL,"\u2A97":c.REL,"\u2A98":c.REL,"\u2A99":c.REL,"\u2A9A":c.REL,"\u2A9B":c.REL,"\u2A9C":c.REL,"\u2A9D":c.REL,"\u2A9E":c.REL,"\u2A9F":c.REL,"\u2AA0":c.REL,"\u2AA1":c.REL,"\u2AA1\u0338":c.REL,"\u2AA2":c.REL,"\u2AA2\u0338":c.REL,"\u2AA3":c.REL,"\u2AA4":c.REL,"\u2AA5":c.REL,"\u2AA6":c.REL,"\u2AA7":c.REL,"\u2AA8":c.REL,"\u2AA9":c.REL,"\u2AAA":c.REL,"\u2AAB":c.REL,"\u2AAC":c.REL,"\u2AAD":c.REL,"\u2AAE":c.REL,"\u2AAF\u0338":c.REL,"\u2AB0\u0338":c.REL,"\u2AB1":c.REL,"\u2AB2":c.REL,"\u2AB3":c.REL,"\u2AB4":c.REL,"\u2AB5":c.REL,"\u2AB6":c.REL,"\u2AB7":c.REL,"\u2AB8":c.REL,"\u2AB9":c.REL,"\u2ABA":c.REL,"\u2ABB":c.REL,"\u2ABC":c.REL,"\u2ABD":c.REL,"\u2ABE":c.REL,"\u2ABF":c.REL,"\u2AC0":c.REL,"\u2AC1":c.REL,"\u2AC2":c.REL,"\u2AC3":c.REL,"\u2AC4":c.REL,"\u2AC5":c.REL,"\u2AC6":c.REL,"\u2AC7":c.REL,"\u2AC8":c.REL,"\u2AC9":c.REL,"\u2ACA":c.REL,"\u2ACB":c.REL,"\u2ACC":c.REL,"\u2ACD":c.REL,"\u2ACE":c.REL,"\u2ACF":c.REL,"\u2AD0":c.REL,"\u2AD1":c.REL,"\u2AD2":c.REL,"\u2AD3":c.REL,"\u2AD4":c.REL,"\u2AD5":c.REL,"\u2AD6":c.REL,"\u2AD7":c.REL,"\u2AD8":c.REL,"\u2AD9":c.REL,"\u2ADA":c.REL,"\u2ADB":c.REL,"\u2ADC":c.REL,"\u2ADD":c.REL,"\u2ADE":c.REL,"\u2ADF":c.REL,"\u2AE0":c.REL,"\u2AE1":c.REL,"\u2AE2":c.REL,"\u2AE3":c.REL,"\u2AE4":c.REL,"\u2AE5":c.REL,"\u2AE6":c.REL,"\u2AE7":c.REL,"\u2AE8":c.REL,"\u2AE9":c.REL,"\u2AEA":c.REL,"\u2AEB":c.REL,"\u2AEC":c.REL,"\u2AED":c.REL,"\u2AEE":c.REL,"\u2AEF":c.REL,"\u2AF0":c.REL,"\u2AF1":c.REL,"\u2AF2":c.REL,"\u2AF3":c.REL,"\u2AF4":c.BIN4,"\u2AF5":c.BIN4,"\u2AF6":c.BIN4,"\u2AF7":c.REL,"\u2AF8":c.REL,"\u2AF9":c.REL,"\u2AFA":c.REL,"\u2AFB":c.BIN4,"\u2AFD":c.BIN4,"\u2AFE":c.BIN3}}});MathJax.Ajax.loadComplete(a.optableDir+"/SuppMathOperators.js")})(MathJax.ElementJax.mml);
+
+/*
+ *  /MathJax-v2/jax/element/mml/optable/SupplementalArrowsA.js
+ *
+ *  Copyright (c) 2009-2018 The MathJax Consortium
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+(function(a){var c=a.mo.OPTYPES;var b=a.TEXCLASS;MathJax.Hub.Insert(a.mo.prototype,{OPTABLE:{infix:{"\u27F0":c.RELSTRETCH,"\u27F1":c.RELSTRETCH,"\u27FB":c.WIDEREL,"\u27FD":c.WIDEREL,"\u27FE":c.WIDEREL,"\u27FF":c.WIDEREL}}});MathJax.Ajax.loadComplete(a.optableDir+"/SupplementalArrowsA.js")})(MathJax.ElementJax.mml);
+
+/*
+ *  /MathJax-v2/jax/element/mml/optable/SupplementalArrowsB.js
+ *
+ *  Copyright (c) 2009-2018 The MathJax Consortium
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+(function(a){var c=a.mo.OPTYPES;var b=a.TEXCLASS;MathJax.Hub.Insert(a.mo.prototype,{OPTABLE:{infix:{"\u2900":c.RELACCENT,"\u2901":c.RELACCENT,"\u2902":c.RELACCENT,"\u2903":c.RELACCENT,"\u2904":c.RELACCENT,"\u2905":c.RELACCENT,"\u2906":c.RELACCENT,"\u2907":c.RELACCENT,"\u2908":c.REL,"\u2909":c.REL,"\u290A":c.RELSTRETCH,"\u290B":c.RELSTRETCH,"\u290C":c.WIDEREL,"\u290D":c.WIDEREL,"\u290E":c.WIDEREL,"\u290F":c.WIDEREL,"\u2910":c.WIDEREL,"\u2911":c.RELACCENT,"\u2912":c.RELSTRETCH,"\u2913":c.RELSTRETCH,"\u2914":c.RELACCENT,"\u2915":c.RELACCENT,"\u2916":c.RELACCENT,"\u2917":c.RELACCENT,"\u2918":c.RELACCENT,"\u2919":c.RELACCENT,"\u291A":c.RELACCENT,"\u291B":c.RELACCENT,"\u291C":c.RELACCENT,"\u291D":c.RELACCENT,"\u291E":c.RELACCENT,"\u291F":c.RELACCENT,"\u2920":c.RELACCENT,"\u2921":c.RELSTRETCH,"\u2922":c.RELSTRETCH,"\u2923":c.REL,"\u2924":c.REL,"\u2925":c.REL,"\u2926":c.REL,"\u2927":c.REL,"\u2928":c.REL,"\u2929":c.REL,"\u292A":c.REL,"\u292B":c.REL,"\u292C":c.REL,"\u292D":c.REL,"\u292E":c.REL,"\u292F":c.REL,"\u2930":c.REL,"\u2931":c.REL,"\u2932":c.REL,"\u2933":c.RELACCENT,"\u2934":c.REL,"\u2935":c.REL,"\u2936":c.REL,"\u2937":c.REL,"\u2938":c.REL,"\u2939":c.REL,"\u293A":c.RELACCENT,"\u293B":c.RELACCENT,"\u293C":c.RELACCENT,"\u293D":c.RELACCENT,"\u293E":c.REL,"\u293F":c.REL,"\u2940":c.REL,"\u2941":c.REL,"\u2942":c.RELACCENT,"\u2943":c.RELACCENT,"\u2944":c.RELACCENT,"\u2945":c.RELACCENT,"\u2946":c.RELACCENT,"\u2947":c.RELACCENT,"\u2948":c.RELACCENT,"\u2949":c.REL,"\u294A":c.RELACCENT,"\u294B":c.RELACCENT,"\u294C":c.REL,"\u294D":c.REL,"\u294E":c.WIDEREL,"\u294F":c.RELSTRETCH,"\u2950":c.WIDEREL,"\u2951":c.RELSTRETCH,"\u2952":c.WIDEREL,"\u2953":c.WIDEREL,"\u2954":c.RELSTRETCH,"\u2955":c.RELSTRETCH,"\u2956":c.RELSTRETCH,"\u2957":c.RELSTRETCH,"\u2958":c.RELSTRETCH,"\u2959":c.RELSTRETCH,"\u295A":c.WIDEREL,"\u295B":c.WIDEREL,"\u295C":c.RELSTRETCH,"\u295D":c.RELSTRETCH,"\u295E":c.WIDEREL,"\u295F":c.WIDEREL,"\u2960":c.RELSTRETCH,"\u2961":c.RELSTRETCH,"\u2962":c.RELACCENT,"\u2963":c.REL,"\u2964":c.RELACCENT,"\u2965":c.REL,"\u2966":c.RELACCENT,"\u2967":c.RELACCENT,"\u2968":c.RELACCENT,"\u2969":c.RELACCENT,"\u296A":c.RELACCENT,"\u296B":c.RELACCENT,"\u296C":c.RELACCENT,"\u296D":c.RELACCENT,"\u296E":c.RELSTRETCH,"\u296F":c.RELSTRETCH,"\u2970":c.RELACCENT,"\u2971":c.RELACCENT,"\u2972":c.RELACCENT,"\u2973":c.RELACCENT,"\u2974":c.RELACCENT,"\u2975":c.RELACCENT,"\u2976":c.RELACCENT,"\u2977":c.RELACCENT,"\u2978":c.RELACCENT,"\u2979":c.RELACCENT,"\u297A":c.RELACCENT,"\u297B":c.RELACCENT,"\u297C":c.RELACCENT,"\u297D":c.RELACCENT,"\u297E":c.REL,"\u297F":c.REL}}});MathJax.Ajax.loadComplete(a.optableDir+"/SupplementalArrowsB.js")})(MathJax.ElementJax.mml);
