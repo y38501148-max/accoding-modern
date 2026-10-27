@@ -1,15 +1,20 @@
 // Both OJ's escaped subscripts and ordinary TeX represent subscripts here.
 export function createMarkdownCore() {
-  const escaped = (s, i) => {
+  const escaped = (s, i, fromOJ = false) => {
     let n = 0;
     while (i > 0 && s[--i] === '\\') n++;
+    // Saved formula backslashes carry one extra Markdown escaping layer.
+    if (fromOJ) n = Math.ceil(n / 2);
     return n % 2 === 1;
   };
   function mathBody(s, mode) {
-    return s.replace(/\\*_/g, run => {
+    if (mode === 'from-oj') return s.replace(/\\([\\_])/g, '$1');
+    const common = s.replace(/\\*_/g, run => {
       const n = run.length - 1;
-      return mode === 'oj' ? (n % 2 ? run : '\\' + run) : (n % 2 ? run.slice(1) : run);
+      return n % 2 ? run.slice(1) : run;
     });
+    // Escape the original backslashes before adding Markdown's subscript escapes.
+    return mode === 'oj' ? common.replace(/\\/g, '\\\\').replace(/_/g, '\\_') : common;
   }
   function convert(source, mode = 'oj') {
     const eol = source.includes('\r\n') ? '\r\n' : '\n';
@@ -68,7 +73,7 @@ export function createMarkdownCore() {
         const [open, close, target] = delim;
         let j = i + open.length, found = -1;
         while ((j = s.indexOf(close, j)) >= 0) {
-          if (!escaped(s, j) && (close !== '$' || (s[j - 1] !== '$' && s[j + 1] !== '$' && /\S/.test(s[j - 1])))) { found = j; break; }
+          if (!escaped(s, j, mode === 'from-oj') && (close !== '$' || (s[j - 1] !== '$' && s[j + 1] !== '$' && /\S/.test(s[j - 1])))) { found = j; break; }
           j += close.length;
         }
         if (found >= 0) {
@@ -85,5 +90,9 @@ export function createMarkdownCore() {
     }
     return eol === '\n' ? out : out.replace(/\n/g, eol);
   }
-  return { toOJ: source => convert(source, 'oj'), toCommon: source => convert(source, 'common') };
+  return {
+    toOJ: source => convert(source, 'oj'),
+    toCommon: source => convert(source, 'common'),
+    fromOJ: source => convert(source, 'from-oj')
+  };
 }

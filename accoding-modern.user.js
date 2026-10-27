@@ -1208,16 +1208,21 @@ function mountListFilter({page, table, wrap, toolbar, input, info, empty, dataRo
 
 // Both OJ's escaped subscripts and ordinary TeX represent subscripts here.
 function createMarkdownCore() {
-  const escaped = (s, i) => {
+  const escaped = (s, i, fromOJ = false) => {
     let n = 0;
     while (i > 0 && s[--i] === '\\') n++;
+    // Saved formula backslashes carry one extra Markdown escaping layer.
+    if (fromOJ) n = Math.ceil(n / 2);
     return n % 2 === 1;
   };
   function mathBody(s, mode) {
-    return s.replace(/\\*_/g, run => {
+    if (mode === 'from-oj') return s.replace(/\\([\\_])/g, '$1');
+    const common = s.replace(/\\*_/g, run => {
       const n = run.length - 1;
-      return mode === 'oj' ? (n % 2 ? run : '\\' + run) : (n % 2 ? run.slice(1) : run);
+      return n % 2 ? run.slice(1) : run;
     });
+    // Escape the original backslashes before adding Markdown's subscript escapes.
+    return mode === 'oj' ? common.replace(/\\/g, '\\\\').replace(/_/g, '\\_') : common;
   }
   function convert(source, mode = 'oj') {
     const eol = source.includes('\r\n') ? '\r\n' : '\n';
@@ -1276,7 +1281,7 @@ function createMarkdownCore() {
         const [open, close, target] = delim;
         let j = i + open.length, found = -1;
         while ((j = s.indexOf(close, j)) >= 0) {
-          if (!escaped(s, j) && (close !== '$' || (s[j - 1] !== '$' && s[j + 1] !== '$' && /\S/.test(s[j - 1])))) { found = j; break; }
+          if (!escaped(s, j, mode === 'from-oj') && (close !== '$' || (s[j - 1] !== '$' && s[j + 1] !== '$' && /\S/.test(s[j - 1])))) { found = j; break; }
           j += close.length;
         }
         if (found >= 0) {
@@ -1293,7 +1298,11 @@ function createMarkdownCore() {
     }
     return eol === '\n' ? out : out.replace(/\n/g, eol);
   }
-  return { toOJ: source => convert(source, 'oj'), toCommon: source => convert(source, 'common') };
+  return {
+    toOJ: source => convert(source, 'oj'),
+    toCommon: source => convert(source, 'common'),
+    fromOJ: source => convert(source, 'from-oj')
+  };
 }
 
 function mountMarkdownEditor(Core) {
@@ -1301,9 +1310,13 @@ function mountMarkdownEditor(Core) {
   const preview = document.getElementById('preview');
   if (!input?.form || !preview || document.getElementById('am-markdown-tools')) return;
   const form = input.form;
+  // Decode saved formulas once; all preview/copy/save paths then encode the draft once.
+  const loaded = input.value;
+  input.defaultValue = Core.fromOJ(input.defaultValue);
+  input.value = Core.fromOJ(loaded);
   const toolbar = document.createElement('div');
   toolbar.id = 'am-markdown-tools';
-  toolbar.innerHTML = `<div class="am-md-actions"><strong>Markdown 兼容编辑</strong><button type="button" data-copy="common">复制通用 Markdown</button><button type="button" data-copy="oj">复制 OJ 格式</button><button type="button" data-show>查看保存格式</button></div><p>支持普通／转义下标、两种公式定界符及围栏代码。保存时自动适配 OJ，编辑原文保持不变。</p><span role="status" aria-live="polite"></span><details><summary>将保存的题面源码</summary><textarea readonly aria-label="将保存的题面源码" spellcheck="false"></textarea></details>`;
+  toolbar.innerHTML = `<div class="am-md-actions"><strong>Markdown 兼容编辑</strong><button type="button" data-copy="common">复制通用 Markdown</button><button type="button" data-copy="oj">复制 OJ 格式</button><button type="button" data-show>查看保存格式</button></div><p>支持公式反斜杠、普通／转义下标、两种公式定界符及围栏代码。载入时还原公式转义，保存时自动适配 OJ。</p><span role="status" aria-live="polite"></span><details><summary>将保存的题面源码</summary><textarea readonly aria-label="将保存的题面源码" spellcheck="false"></textarea></details>`;
   const style = document.createElement('style');
   style.textContent = `#am-markdown-tools{margin:12px 0;padding:14px 16px;border:1px solid #dbe5ef;background:#f5f8fc;border-radius:10px;color:#344258;font:13px/1.6 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif}#am-markdown-tools .am-md-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}#am-markdown-tools strong{margin-right:auto}#am-markdown-tools button{border:1px solid #cbd7e6;background:#fff;color:#315787;border-radius:6px;padding:6px 10px;cursor:pointer;font:inherit}#am-markdown-tools p{margin:8px 0 0}#am-markdown-tools [role=status]{color:#386749}#am-markdown-tools details:not([open]){display:none}#am-markdown-tools details{margin-top:10px}#am-markdown-tools textarea{display:block;width:100%!important;min-height:220px;font:13px/1.65 ui-monospace,monospace;white-space:pre;overflow:auto;padding:12px;border:1px solid #cbd7e6;border-radius:6px;background:white;color:#243249}#am-markdown-tools button:focus-visible{outline:2px solid #377ce2;outline-offset:2px}`;
   document.head.append(style);

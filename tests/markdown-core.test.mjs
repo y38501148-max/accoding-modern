@@ -37,8 +37,46 @@ test('unclosed formulas and escaped currency are not rewritten', () => {
 });
 test('TeX row separators retain backslash count and normalization is stable', () => {
   const text = String.raw`$$a_i\\_j$$`;
-  assert.equal(M.toOJ(text), String.raw`$$a\_i\\\_j$$`);
-  assert.equal(M.toCommon(M.toOJ(text)), text);
+  const saved = String.raw`$$a\_i\\\\\_j$$`;
+  assert.equal(M.toOJ(text), saved);
+  assert.equal(M.fromOJ(saved), text);
+  assert.equal(M.toOJ(M.fromOJ(saved)), saved);
+  assert.equal(M.toCommon(text), text);
+});
+test('formula backslashes survive Markdown escapes before braces, punctuation and commands', () => {
+  const text = String.raw`$\{a_i\} + \alpha + \! + \# + \[x\]$`;
+  const saved = String.raw`$\\{a\_i\\} + \\alpha + \\! + \\# + \\[x\\]$`;
+  assert.equal(M.toOJ(text), saved);
+  assert.equal(M.fromOJ(saved), text);
+  assert.equal(M.toCommon(text), text);
+});
+test('matrix rows and alternate math delimiters escape only the formula body', () => {
+  const text = String.raw`\[\begin{matrix}a_i & b_j \\ c_k & d_l\end{matrix}\]`;
+  const saved = String.raw`$$\\begin{matrix}a\_i & b\_j \\\\ c\_k & d\_l\\end{matrix}$$`;
+  const common = String.raw`$$\begin{matrix}a_i & b_j \\ c_k & d_l\end{matrix}$$`;
+  assert.equal(M.toOJ(text), saved);
+  assert.equal(M.fromOJ(saved), common);
+  assert.equal(M.toOJ(M.fromOJ(saved)), saved);
+});
+test('saved formula decoding keeps escaped dollar delimiters', () => {
+  const text = String.raw`$\text{a b} + \$5 + a_i$`;
+  const saved = String.raw`$\\text{a b} + \\$5 + a\_i$`;
+  assert.equal(M.fromOJ(saved), text);
+  assert.equal(M.toOJ(M.fromOJ(saved)), saved);
+});
+test('backslash conversion leaves prose, code, URLs and HTML untouched', () => {
+  const text = String.raw`路径 C:\temp\file 和 \*标记\*，价格 \$5。` + '\n\n'
+    + '`' + String.raw`$\{a_i\}$` + '`\n\n'
+    + '    ' + String.raw`$\{a_i\}$` + '\n\n'
+    + String.raw`<code>$\{a_i\}$</code> <a href="$\{a_i\}$">link</a> https://example.org/$\{a_i\}$`;
+  assert.equal(M.toOJ(text), text);
+  assert.equal(M.fromOJ(text), text);
+});
+test('saved formulas can be reopened and saved repeatedly without growing escapes', () => {
+  const saved = String.raw`$\\{a\_i\\}$，$$\\begin{matrix}a & b \\\\ c & d\\end{matrix}$$`;
+  let text = saved;
+  for (let i = 0; i < 4; i++) text = M.toOJ(M.fromOJ(text));
+  assert.equal(text, saved);
 });
 test('CRLF documents preserve line ending style and code whitespace', () => {
   assert.equal(M.toOJ('```\r\n  a_b\r\n```\r\n'), '      a_b\r\n');
