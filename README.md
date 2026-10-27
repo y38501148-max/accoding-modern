@@ -69,3 +69,7 @@ npm run preview  # 启动隔离的本地预览
 修改 `src/` 后运行 `npm run build`，不要直接编辑根目录构建产物。版本号统一维护在 `package.json`；构建生成 `accoding-modern.user.js`、`accoding-modern.meta.js` 和 `version.json`。发布前运行检查并核对本地预览。
 
 本项目与北航或 Accoding 官方无隶属关系。采用 [MIT License](LICENSE)。
+
+## 逐题过题曲线
+
+教学工作台的“比赛分析 → 逐题分析”支持在右上角选择题目，显示该题的累计过题曲线。按每位学生赛内首次 AC 统计，每分钟一个数据点、横轴每 10 分钟一个刻度；纵轴按当前题目人数自动调整。

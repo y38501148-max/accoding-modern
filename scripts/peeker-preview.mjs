@@ -4,7 +4,7 @@ import {readFile} from 'node:fs/promises';
 import {homedir} from 'node:os';
 const root=new URL('../',import.meta.url),port=Number(process.env.OJ_PEEKER_PREVIEW_PORT||18765);
 const agentRoot=process.env.OJ_AGENT_ROOT||homedir()+'/.config/oj-review/agent';
-const agent='http://127.0.0.1:18798';
+const agent=process.env.OJ_AGENT_URL||'http://127.0.0.1:18798';
 const server=createServer(async(req,res)=>{
   const url=new URL(req.url,'http://127.0.0.1:'+port);
   try{

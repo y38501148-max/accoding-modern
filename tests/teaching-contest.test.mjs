@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createTeachingContest,mergeTeachingContests} from '../src/teaching-contest.mjs';
+import {createTeachingContest,mergeTeachingContests,acceptanceAxis} from '../src/teaching-contest.mjs';
 import {createContestCore} from '../src/contest-core.mjs';
 const core=createContestCore();
 const contest={id:1326,group_id:124,title:'E4 练习赛',start_time:'2026-10-15T00:00:00Z',end_time:'2026-10-18T15:50:00Z',problems:[{id:2,title:'第二题',contest_problem_list:{order:1,score:20}},{id:1,title:'第一题',contest_problem_list:{order:0,score:30}}]};
@@ -20,4 +20,19 @@ test('OJ rank produces roster-scoped overview, scores and four problem groups wi
  const a=data.outcomes.problems[0];assert.deepEqual(a.full.map(r=>r.student_id),['001']);assert.equal(a.full[0].attempts,2);assert.deepEqual(a.zero.map(r=>r.student_id),['002']);assert.deepEqual(a.missing.map(r=>r.student_id),['003','004']);
  const b=data.outcomes.problems[1];assert.equal(b.partial[0].score_ratio,.5);assert.equal(data.problems[1].average_score,10);
  assert.deepEqual(data.unsubmitted.map(r=>r.student_id),['003','004']);assert.throws(()=>createTeachingContest(contest,rank,members,'123',core),/不属于当前课程/);
+});
+
+test('each problem axis fits its own accepted count with distinct integer ticks',()=>{
+  for(const peak of [0,1,2,14,45,137,647]){
+    const scale=acceptanceAxis(peak);
+    assert.ok(scale.max>=peak&&scale.max>0);
+    assert.equal(scale.ticks[0],0);
+    assert.equal(scale.ticks.at(-1),scale.max);
+    assert.ok(scale.ticks.every(Number.isInteger));
+    assert.equal(new Set(scale.ticks).size,scale.ticks.length);
+    assert.ok(scale.ticks.length<=6);
+  }
+  assert.deepEqual(acceptanceAxis(1),{max:1,ticks:[0,1]});
+  assert.deepEqual(acceptanceAxis(2),{max:2,ticks:[0,1,2]});
+  assert.ok(acceptanceAxis(14).max<acceptanceAxis(137).max);
 });

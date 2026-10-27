@@ -8,7 +8,7 @@ function mountClassManager(core,contestCore,upsolveCore,upsolveReader,reviewCore
   const select=(id,label,values)=>{const s=make('select');s.id=id;s.setAttribute('aria-label',label);for(const [v,t]of values)s.append(new Option(t,v));return s;};
   const link=(text,href)=>{const a=make('a',text);a.href=href;a.target='_blank';a.rel='noopener noreferrer';return a;};
   const prefKey='accoding-modern.teaching.selection.v1';
-  let saved=JSON.parse(localStorage.getItem(prefKey)||'{}'),bootstrap=null,members=[],contests=[],data=null,submissions=null,semesterData=null,outcomeData=null,curveData=null;
+  let saved=JSON.parse(localStorage.getItem(prefKey)||'{}'),bootstrap=null,members=[],contests=[],data=null,submissions=null,semesterData=null,outcomeData=null,curveData=null,acceptanceData=null;
   let course=saved.course||'',classId=saved.classId||'',type=saved.type||'teaching',cid=saved.cid||'',mode=saved.mode||'overview',tab=saved.tab||'overview';
   let includeRetake=!!saved.includeRetake,includeSpecial=!!saved.includeSpecial,generation=0,controller=null,studentVersion=0,upsolve=null,upsolveController=null,projectTimer=null,liveTimer=null,scoreOrder='score',opener=null,previousOverflow='',memberQuery='',page=0,problemId='',outcomeKind='all';
   const titles={overview:'班级概览',contest:'比赛分析',semester:'学期分析',upsolve:'补题排行榜',review:'代码复核'};
@@ -23,7 +23,7 @@ function mountClassManager(core,contestCore,upsolveCore,upsolveReader,reviewCore
   const stamp=v=>v?new Date(/[zZ]|[+]\d\d:\d\d$/.test(v)?v:v.replace(' ','T')+'+08:00').toLocaleString('zh-CN',{hour12:false}):'尚未同步';
   function notice(text,error=false){$('#message').textContent=text;$('#message').hidden=!text;$('#message').classList.toggle('error',error);}
   async function run(fn){try{await fn();}catch(e){if(e.name!=='AbortError')notice(e.message,true);}}
-  function reset(){clearTimeout(liveTimer);liveTimer=null;generation++;controller?.abort();controller=new AbortController();upsolveController?.abort();upsolveController=null;data=submissions=semesterData=outcomeData=curveData=upsolve=null;studentVersion++;$('#student-drawer').hidden=true;review.setActive(false);review.reset();}
+  function reset(){clearTimeout(liveTimer);liveTimer=null;generation++;controller?.abort();controller=new AbortController();upsolveController?.abort();upsolveController=null;data=submissions=semesterData=outcomeData=curveData=acceptanceData=upsolve=null;studentVersion++;$('#student-drawer').hidden=true;review.setActive(false);review.reset();}
   function request(path,extra={}){return client.request(path,{query:query(),signal:controller?.signal,...extra});}
   function table(headers,rows){const wrap=make('div',null,'table-wrap'),t=make('table'),head=make('thead'),tr=make('tr'),body=make('tbody');headers.forEach(h=>tr.append(make('th',h)));head.append(tr);for(const values of rows){const tr=make('tr');for(const value of values){const td=make('td');if(value instanceof Node)td.append(value);else td.textContent=value??'—';tr.append(td);}body.append(tr);}if(!rows.length){const tr=make('tr'),td=make('td','暂无符合条件的记录','empty');td.colSpan=headers.length;tr.append(td);body.append(tr);}t.append(head,body);wrap.append(t);return wrap;}
   function panel(title,...children){const p=make('section',null,'panel');if(title){const head=make('div',null,'panel-head');head.append(make('h2',title));p.append(head);}p.append(...children);return p;}
@@ -96,6 +96,7 @@ function mountClassManager(core,contestCore,upsolveCore,upsolveReader,reviewCore
   }
   async function loadSubmissions(){if(submissions)return submissions;const token=generation;const result=await request('/contests/'+cid+'/submissions');if(token!==generation)throw new DOMException('已切换范围','AbortError');submissions=result.submissions;return submissions;}
   async function loadTab(){const token=generation;await loadContest();if(!data||token!==generation)return;if(mode==='contest'&&tab==='problems'&&classId&&!outcomeData){const result=await request('/contests/'+cid+'/problems');if(token===generation)outcomeData=result;}
+    if(mode==='contest'&&tab==='problems'&&isCollected()&&!acceptanceData){const result=await request('/contests/'+cid+'/acceptance-curves');if(token===generation)acceptanceData=result;}
     if(mode==='contest'&&tab==='process'&&!curveData){const result=await request('/contests/'+cid+'/curves');if(token===generation)curveData=result;}}
   async function loadPage(token=generation){
     if(cid&&!isCollected()){if(['review','semester','upsolve'].includes(mode))mode='contest';if(tab==='process')tab='overview';save();}
@@ -148,6 +149,7 @@ function mountClassManager(core,contestCore,upsolveCore,upsolveReader,reviewCore
     };input.oninput=state.onchange=order.onchange=()=>{memberQuery=input.value;outcomeKind=state.value;scoreOrder=order.value;page=0;draw();};draw();out.append(panel('',form,content));
   }
   function drawProblems(out){
+    out.append(acceptanceChart());
     const grid=table(['','题号','标题','满分','提交人数','通过人数','通过率','平均分'],data.problems.map(p=>[
       classId?button('▸',()=>{},'expand-problem'):'',p.order_letter,p.title,number(p.max_score),p.attempted,p.accepted,number(100*p.accept_rate)+'%',number(p.average_score)+' / '+number(p.max_score)
     ]));
@@ -177,17 +179,18 @@ function mountClassManager(core,contestCore,upsolveCore,upsolveReader,reviewCore
     });out.append(panel('逐题统计',grid));
   }
   const chartColors=['#275ad6','#16765d','#a35caf','#ce8125','#0095a8','#cd5264','#6e6bd4','#628d24','#965f42','#2683ba','#a28b15','#b74e91','#437e67','#a45e36','#6b829b'];
-  let chartSerial=0;
+  let chartSerial=0,acceptanceProblemId='';
   function lineChart(labels,series,max=100,config={}){
     const wrap=make('div',null,'chart-wrap');if(!labels.length){wrap.append(make('p','暂无已核实的比赛数据','empty'));return wrap;}
     const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');const bottom=config.tall?312:224,min=config.min||0;svg.setAttribute('viewBox',`0 0 800 ${bottom+56}`);if(config.tall)svg.classList.add('process-chart');svg.setAttribute('preserveAspectRatio','none');svg.classList.add('line-chart');svg.setAttribute('role','group');svg.setAttribute('tabindex','0');svg.setAttribute('aria-label','趋势图。悬停或点击查看，方向键切换数据点。');
+    if(config.minWidth)svg.style.minWidth=config.minWidth+'px';
     const node=(name,attrs,text)=>{const n=document.createElementNS(svg.namespaceURI,name);for(const [k,v]of Object.entries(attrs))n.setAttribute(k,v);if(text!=null)n.textContent=text;return n;};
     const x=i=>48+(labels.length>1?i/(labels.length-1):.5)*732,y=v=>bottom-(Number(v)-min)/(max-min)*(bottom-32);
-    for(let i=0;i<5;i++){const yy=32+i*(bottom-32)/4;svg.append(node('line',{x1:48,y1:yy,x2:780,y2:yy,stroke:'#e8edf2'}),node('text',{x:38,y:yy+4,'text-anchor':'end'},number(max-(max-min)*i/4,1)));}
+    for(const value of config.yTicks||[0,1,2,3,4].map(i=>max-(max-min)*i/4)){const yy=y(value);svg.append(node('line',{x1:48,y1:yy,x2:780,y2:yy,stroke:'#e8edf2'}),node('text',{x:38,y:yy+4,'text-anchor':'end'},number(value,1)));}
     svg.append(node('text',{x:48,y:16},config.unit||'%'));
     const clipId='am-chart-'+(++chartSerial),defs=node('defs',{}),clip=node('clipPath',{id:clipId});clip.append(node('rect',{x:48,y:32,width:732,height:bottom-32}));defs.append(clip);svg.append(defs);
-    const lines=series.map((s,idx)=>{const g=node('g',{'clip-path':`url(#${clipId})`});let path='';s.values.forEach((v,i)=>{if(v==null){path+=' ';return;}path+=(i&&s.values[i-1]!=null?'L':'M')+x(i)+','+y(v)+' ';});g.append(node('path',{d:path,fill:'none',stroke:s.color||chartColors[idx%chartColors.length],'stroke-width':s.overall?2:2.3,'stroke-dasharray':s.overall?'6 5':''}));if(labels.length===1&&s.values[0]!=null)g.append(node('circle',{cx:x(0),cy:y(s.values[0]),r:4,fill:s.color||chartColors[idx%chartColors.length]}));svg.append(g);return g;});
-    labels.forEach((label,i)=>{if(labels.length>10&&i%Math.ceil(labels.length/8)!==0&&i!==labels.length-1)return;svg.append(node('text',{x:x(i),y:bottom+28,'text-anchor':'middle'},label.length>12?label.slice(0,11)+'…':label));});
+    const lines=series.map((s,idx)=>{const g=node('g',{'clip-path':`url(#${clipId})`});let path='';s.values.forEach((v,i)=>{if(v==null){path+=' ';return;}path+=(i&&s.values[i-1]!=null?(config.step?'H'+x(i)+' V':'L'+x(i)+','):'M'+x(i)+',')+y(v)+' ';});g.append(node('path',{d:path,fill:'none',stroke:s.color||chartColors[idx%chartColors.length],'stroke-width':s.overall?2:2.3,'stroke-dasharray':s.overall?'6 5':s.dash||''}));if(labels.length===1&&s.values[0]!=null)g.append(node('circle',{cx:x(0),cy:y(s.values[0]),r:4,fill:s.color||chartColors[idx%chartColors.length]}));svg.append(g);return g;});
+    labels.forEach((label,i)=>{if(config.tickEvery?i%config.tickEvery!==0:labels.length>10&&i%Math.ceil(labels.length/8)!==0&&i!==labels.length-1)return;svg.append(node('text',{x:x(i),y:bottom+28,'text-anchor':'middle'},label.length>12?label.slice(0,11)+'…':label));});
     svg.append(node('text',{x:414,y:bottom+51,'text-anchor':'middle'},config.axis||'比赛场次'));
     const cursor=node('g',{'clip-path':`url(#${clipId})`});cursor.style.display='none';svg.append(cursor);const tip=make('div',null,'chart-tooltip');tip.hidden=true;tip.setAttribute('role','status');wrap.append(svg,tip);
     let active=0;const enabled=series.map(()=>true);
@@ -199,8 +202,27 @@ function mountClassManager(core,contestCore,upsolveCore,upsolveReader,reviewCore
     };
     svg.onpointermove=svg.onpointerdown=e=>{const r=svg.getBoundingClientRect();show(Math.max(0,Math.min(labels.length-1,Math.round(((e.clientX-r.left)/r.width*800-48)/732*(labels.length-1)))),e.clientX,e.clientY);};
     const hide=()=>{tip.hidden=true;cursor.style.display='none';};svg.onpointerleave=hide;svg.onblur=hide;svg.onfocus=()=>show(active);svg.onkeydown=e=>{if(['ArrowLeft','ArrowRight','Home','End','Escape'].includes(e.key)){e.preventDefault();if(e.key==='Escape')hide();else show(e.key==='Home'?0:e.key==='End'?labels.length-1:Math.max(0,Math.min(labels.length-1,active+(e.key==='ArrowLeft'?-1:1))));}};
-    if(series.length>1){const legend=make('details',null,'chart-legend');legend.append(make('summary',`图线开关 · ${series.length} 条`));const toggles=make('div',null,'filters');series.forEach((s,i)=>{const label=make('label'),check=make('input');check.type='checkbox';check.checked=true;label.style.color=s.color||chartColors[i%chartColors.length];label.append(check,document.createTextNode(s.name));check.onchange=()=>{enabled[i]=check.checked;lines[i].style.display=check.checked?'':'none';hide();};toggles.append(label);});legend.append(toggles);wrap.append(legend);}
+    if(series.length>1){const legend=make('details',null,'chart-legend');legend.open=!!config.legendOpen;legend.append(make('summary',`图线开关 · ${series.length} 条`));const toggles=make('div',null,'filters');series.forEach((s,i)=>{const label=make('label'),check=make('input');check.type='checkbox';check.checked=true;label.style.color=s.color||chartColors[i%chartColors.length];label.append(check,document.createTextNode(s.name));check.onchange=()=>{enabled[i]=check.checked;lines[i].style.display=check.checked?'':'none';hide();};toggles.append(label);});legend.append(toggles);wrap.append(legend);}
     return wrap;
+  }
+  function acceptanceChart(){
+    const box=panel('逐题过题曲线');box.id='problem-acceptance';
+    if(!acceptanceData){box.append(make('p',isCollected()?'过题曲线尚未加载，请刷新数据。':'采集比赛后可查看过题曲线。','muted'));return box;}
+    box.append(make('p','每人每题仅计赛内首次 AC · 每分钟累计','muted'));
+    if(!acceptanceData.series.length)return box;
+    if(!acceptanceData.series.some(p=>p.id===acceptanceProblemId))acceptanceProblemId=acceptanceData.series[0].id;
+    const choose=select('acceptance-problem','过题曲线题目',acceptanceData.series.map(p=>[p.id,p.label+' · '+p.title]));choose.value=acceptanceProblemId;
+    const label=make('label','题目');label.append(choose);box.querySelector('.panel-head').append(label);
+    const content=make('div');box.append(content);
+    const draw=()=>{const problem=acceptanceData.series.find(p=>p.id===choose.value);acceptanceProblemId=problem.id;
+      const card=make('section',null,'acceptance-problem'),heading=make('div',null,'acceptance-problem-heading');
+      heading.append(make('h3',problem.label+' · '+problem.title),make('span',problem.accepted+' 人通过','muted'));
+      const scale=acceptanceAxis(problem.accepted);
+      const chart=lineChart(acceptanceData.minutes.map(m=>m+' min'),[{name:problem.label+' 题',values:problem.values}],scale.max,{tall:true,tickEvery:10,yTicks:scale.ticks,minWidth:Math.max(800,Math.ceil(acceptanceData.minutes.at(-1)/10)*58),unit:'累计过题人数',suffix:' 人',axis:'比赛时间（分钟）',titleAt:i=>`${problem.label} 题 · 第 ${acceptanceData.minutes[i]} 分钟`});
+      chart.querySelector('svg').setAttribute('aria-label',problem.label+' · '+problem.title+'过题曲线。悬停或点击查看，方向键切换分钟。');
+      card.append(heading,chart);content.replaceChildren(card);
+    };choose.onchange=draw;draw();
+    return box;
   }
   function drawProcess(out){
     if(!curveData)return;

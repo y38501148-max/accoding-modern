@@ -1,3 +1,10 @@
+export function acceptanceAxis(peak){
+  const target=Math.max(1,peak/4),power=10**Math.floor(Math.log10(target));
+  const step=[1,2,5,10].map(n=>n*power).find(n=>n>=target);
+  const max=Math.max(step,Math.ceil(peak/step)*step);
+  return {max,ticks:Array.from({length:max/step+1},(_,i)=>i*step)};
+}
+
 export function mergeTeachingContests(discovered,collected,includeSpecial){
   const known=new Map(collected.map(c=>[String(c.id),c]));
   const rows=new Map(collected.map(c=>[String(c.id),{...c,id:String(c.id)}]));
