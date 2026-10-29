@@ -79,7 +79,7 @@ test('a server upgrade-required response is readable and has no cached successfu
 
 for(const [baseline,target,count,word] of [['tab','space',22,'空格'],['space','tab',21,'Tab']]){
   test(`indentation fallback describes ${baseline} baseline and ${target} target accurately`,()=>{
-    const fact={baseline_style:baseline,target_style:target,baseline_problem_count:4,
+    const fact={candidate:true,baseline_style:baseline,target_style:target,baseline_problem_count:4,
       target_profile:{eligible_lines:25,[target+'_lines']:count}};
     const text=core.indentationNarrative({rule_metadata:{indentation_outlier:fact}}).text;
     assert.ok(text.includes(`${count}/25`));assert.ok(text.endsWith(`使用${word}。`));

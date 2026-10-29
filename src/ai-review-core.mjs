@@ -64,9 +64,12 @@ export function createAiReviewCore() {
   }
   function indentationNarrative(record){
     const fact=record?.rule_metadata?.indentation_outlier;if(!fact)return null;
+    const observationOnly=fact.observation_only===true||fact.version==='indentation-style-observation-v2-20261029';
+    const historicalHit=fact.candidate===true||record.result?.label?.includes('跨题缩进习惯异常');
+    if(observationOnly?fact.outlier_observation!==true&&fact.setting_switch_observation!==true:!historicalHit&&fact.setting_switch_observation!==true)return null;
     const profile=fact.target_profile||{},names={tab:'Tab',space:'空格',mixed:'混用'};
     const target=fact.target_style||(fact.baseline_style==='space'?'tab':'space');
-    return {text:fact.explanation||`同场其他 ${fact.baseline_problem_count??0} 题以 ${names[fact.baseline_style]||fact.baseline_style} 缩进为主；本题 ${profile[target+'_lines']??0}/${profile.eligible_lines??0} 条有效缩进行使用${names[target]||target}。`,lines:(profile.evidence_lines||[]).slice(0,12),templates:profile.template_exclusions?.matches||[],scope:'同场其他题对照（可能包含较晚提交）'};
+    return {title:observationOnly||!historicalHit?'跨题缩进习惯观察':'跨题缩进习惯异常',notice:observationOnly?'仅作辅助观察，不单独进入核查名单，也不计分。':'',text:fact.explanation||`同场其他 ${fact.baseline_problem_count??0} 题以 ${names[fact.baseline_style]||fact.baseline_style} 缩进为主；本题 ${profile[target+'_lines']??0}/${profile.eligible_lines??0} 条有效缩进行使用${names[target]||target}。`,lines:(profile.evidence_lines||[]).slice(0,12),templates:profile.template_exclusions?.matches||[],scope:'同场其他题对照（可能包含较晚提交）'};
   }
   function contestPairNarrative(record){
     const pair=record?.rule_metadata?.cross_problem_style;

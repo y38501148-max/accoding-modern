@@ -282,7 +282,7 @@ test('new clients negotiate indentation rule support and keep raw whitespace evi
   await c.progress(1299);
   assert.equal(calls[0].headers['X-OJ-Review-Capabilities'],'indentation-style-v1');
   assert.ok(core.featureLabels.includes('跨题缩进习惯异常'));
-  const narrative=core.indentationNarrative({rule_metadata:{indentation_outlier:{baseline_problem_count:4,baseline_style:'tab',target_profile:{eligible_lines:25,space_lines:22,evidence_lines:[{line:8,style:'space',prefix_visualized:'····'}]}}}});
+  const narrative=core.indentationNarrative({rule_metadata:{indentation_outlier:{candidate:true,baseline_problem_count:4,baseline_style:'tab',target_profile:{eligible_lines:25,space_lines:22,evidence_lines:[{line:8,style:'space',prefix_visualized:'····'}]}}}});
   assert.match(narrative.scope,/同场其他题/);assert.equal(narrative.lines[0].line,8);assert.match(narrative.text,/22\/25/);
 });
 

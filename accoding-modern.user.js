@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Accoding Modern · 北航 OJ 管理界面
 // @namespace    local.accoding.modern
-// @version      1.24.8
+// @version      1.24.9
 // @description  界面美化、教学工作台、按题筛选通过提交、页内代码复核、独立补题排行榜与提交查看、赛事统计看板、Markdown 兼容编辑与批量测试点选择，保留原站登录和操作。
 // @include      https://accoding.buaa.edu.cn:4000/*
 // @include      https://accoding-4000.e1.buaa.edu.cn/*
@@ -23,7 +23,7 @@
 
 (() => {
 'use strict';
-const ACCODING_MODERN_VERSION="1.24.8";
+const ACCODING_MODERN_VERSION="1.24.9";
 // Runtime URL compatibility for the direct site and BUAA VPN reverse proxy.
 // The VPN keeps the upstream app under /https-4000/<opaque-token>/, so absolute
 // root requests and pathname checks must be evaluated relative to that prefix.
@@ -2203,9 +2203,12 @@ function createAiReviewCore() {
   }
   function indentationNarrative(record){
     const fact=record?.rule_metadata?.indentation_outlier;if(!fact)return null;
+    const observationOnly=fact.observation_only===true||fact.version==='indentation-style-observation-v2-20261029';
+    const historicalHit=fact.candidate===true||record.result?.label?.includes('跨题缩进习惯异常');
+    if(observationOnly?fact.outlier_observation!==true&&fact.setting_switch_observation!==true:!historicalHit&&fact.setting_switch_observation!==true)return null;
     const profile=fact.target_profile||{},names={tab:'Tab',space:'空格',mixed:'混用'};
     const target=fact.target_style||(fact.baseline_style==='space'?'tab':'space');
-    return {text:fact.explanation||`同场其他 ${fact.baseline_problem_count??0} 题以 ${names[fact.baseline_style]||fact.baseline_style} 缩进为主；本题 ${profile[target+'_lines']??0}/${profile.eligible_lines??0} 条有效缩进行使用${names[target]||target}。`,lines:(profile.evidence_lines||[]).slice(0,12),templates:profile.template_exclusions?.matches||[],scope:'同场其他题对照（可能包含较晚提交）'};
+    return {title:observationOnly||!historicalHit?'跨题缩进习惯观察':'跨题缩进习惯异常',notice:observationOnly?'仅作辅助观察，不单独进入核查名单，也不计分。':'',text:fact.explanation||`同场其他 ${fact.baseline_problem_count??0} 题以 ${names[fact.baseline_style]||fact.baseline_style} 缩进为主；本题 ${profile[target+'_lines']??0}/${profile.eligible_lines??0} 条有效缩进行使用${names[target]||target}。`,lines:(profile.evidence_lines||[]).slice(0,12),templates:profile.template_exclusions?.matches||[],scope:'同场其他题对照（可能包含较晚提交）'};
   }
   function contestPairNarrative(record){
     const pair=record?.rule_metadata?.cross_problem_style;
@@ -3051,7 +3054,7 @@ function createAiReviewPanel(container,core,getContext,_readMetadata,options={})
   function renderRuleFacts(target,r){
     const fact=r.rule_metadata;if(!fact)return;const box=el('section');box.append(el('h3','命中事实与历史解释'));
     const indentation=core.indentationNarrative(r);
-    if(indentation){box.append(el('h4','跨题缩进习惯异常'),el('p',indentation.text),el('p',indentation.scope));for(const line of indentation.lines)box.append(pre(`第 ${line.line} 行 · ${line.style} · ${line.prefix_visualized}`));const detail=el('details');detail.append(el('summary','模板排除证据'),pre(JSON.stringify(indentation.templates,null,2)));box.append(detail);}
+    if(indentation){box.append(el('h4',indentation.title),el('p',indentation.text),el('p',indentation.scope));if(indentation.notice)box.append(el('p',indentation.notice));for(const line of indentation.lines)box.append(pre(`第 ${line.line} 行 · ${line.style} · ${line.prefix_visualized}`));const detail=el('details');detail.append(el('summary','模板排除证据'),pre(JSON.stringify(indentation.templates,null,2)));box.append(detail);}
     const pair=core.contestPairNarrative(r);
     if(pair){
       const panel=el('section');panel.dataset.contestPair='1';

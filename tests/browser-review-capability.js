@@ -39,7 +39,15 @@ window.__reviewCapabilityRun = (async () => {
     }};
     const old = record('9102', '输入失败防护', '历史规则输入返回值检查线索。');
     const legacy = record('9103', '长变量命名', '冻结历史运行保留的旧命名标签。');
-    const records = [current, old, legacy];
+    old.rule_metadata = {indentation_outlier: {candidate: false, sample_status: 'insufficient'}};
+    const observed = record('9104', '输入失败防护', '独立输入检查命中，缩进仅作辅助观察。');
+    observed.rule_metadata = {indentation_outlier: {...structuredClone(current.rule_metadata.indentation_outlier),
+      version: 'indentation-style-observation-v2-20261029', candidate: false, observation_only: true,
+      outlier_observation: true, explanation: '同场缩进差异仅作辅助观察。'}};
+    const insufficient = record('9105', '输入失败防护', '独立输入检查命中。');
+    insufficient.rule_metadata = {indentation_outlier: {...structuredClone(observed.rule_metadata.indentation_outlier),
+      outlier_observation: false, sample_status: 'insufficient'}};
+    const records = [current, old, legacy, observed, insufficient];
     let writes = 0;
     const response = value => new Response(JSON.stringify(value), {headers: {'Content-Type': 'application/json'}});
     const mockFetch = async (url, options = {}) => {
@@ -78,7 +86,7 @@ window.__reviewCapabilityRun = (async () => {
       summary: {rows: [{userId: '12', studentId: '0001', name: '合成学生', status: 'matched'}]}};
     panel = ui.createAiReviewPanel(host, core, () => context, null);
     await panel.setActive(true);
-    await until(() => host.querySelectorAll('.ar-table tbody tr').length === 3, '新旧标签列表');
+    await until(() => host.querySelectorAll('.ar-table tbody tr').length === 5, '新旧标签列表');
     check('new_label_is_supported_by_actual_core', core.featureLabels.includes('跨题缩进习惯异常') && core.hasReviewRecord(current));
     check('new_and_old_labels_render_in_list', host.querySelector('.ar-table').textContent.includes('跨题缩进习惯异常') && host.querySelector('.ar-table').textContent.includes('输入失败防护'));
     const feature = host.querySelector('[aria-label="代码特征"]');
@@ -112,6 +120,14 @@ window.__reviewCapabilityRun = (async () => {
     check('previous_label_detail_remains_readable', host.querySelector('.ar-record-summary').textContent.includes('输入失败防护') && !host.querySelector('.ar-rule-details').textContent.includes('跨题缩进习惯异常'));
     await panel.openDetail('9103');
     check('retired_label_frozen_detail_remains_readable', host.querySelector('.ar-record-summary').textContent.includes('长变量命名'));
+    await panel.openDetail('9104');
+    check('new_indentation_is_titled_as_observation', host.querySelector('.ar-rule-details h4')?.textContent === '跨题缩进习惯观察');
+    check('observation_has_no_independent_admission_or_score', host.querySelector('.ar-rule-details').textContent.includes('不单独进入核查名单，也不计分'));
+    check('observation_preserves_raw_indent_evidence', host.querySelector('.ar-rule-details').textContent.includes('第 4 行 · space · ····'));
+    check('observation_does_not_add_anomaly_label', !host.querySelector('.ar-record-summary').textContent.includes('跨题缩进习惯异常'));
+    await panel.openDetail('9105');
+    check('insufficient_samples_do_not_render_an_indentation_title', !host.querySelector('.ar-rule-details').textContent.includes('跨题缩进习惯'));
+
     const returnButton = [...host.querySelectorAll('button')].find(button => button.textContent === '返回列表');
     returnButton.click();
     const peerBranch = [...host.querySelectorAll('button')].find(button => button.textContent === '代码查重');
