@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Accoding Modern · 北航 OJ 管理界面
 // @namespace    local.accoding.modern
-// @version      1.24.6
+// @version      1.24.7
 // @description  界面美化、教学工作台、按题筛选通过提交、页内代码复核、独立补题排行榜与提交查看、赛事统计看板、Markdown 兼容编辑与批量测试点选择，保留原站登录和操作。
 // @include      https://accoding.buaa.edu.cn:4000/*
 // @include      https://accoding-4000.e1.buaa.edu.cn/*
@@ -23,7 +23,7 @@
 
 (() => {
 'use strict';
-const ACCODING_MODERN_VERSION="1.24.6";
+const ACCODING_MODERN_VERSION="1.24.7";
 // Runtime URL compatibility for the direct site and BUAA VPN reverse proxy.
 // The VPN keeps the upstream app under /https-4000/<opaque-token>/, so absolute
 // root requests and pathname checks must be evaluated relative to that prefix.
@@ -2062,7 +2062,7 @@ const serializeClassScoreXlsx = createClassScoreXlsx;
 const buildClassScoreXlsx = createClassScoreXlsx;
 function createClassScoreXlsxBlob(matrix) { return new Blob([createClassScoreXlsx(matrix)], {type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}); }
 
-/** Styled text-only worksheets: identifiers and formula-like text stay literal. */
+/** Styled literal worksheets; optional zero-based numericColumns accept finite numbers. */
 function createTextXlsx(sheets) {
   const main = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
   const rel = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
@@ -2070,8 +2070,14 @@ function createTextXlsx(sheets) {
   const declaration = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
   const files = sheets.map((sheet, index) => {
     const rows = [sheet.headers, ...sheet.rows], end = `${columnName(sheet.headers.length)}${rows.length}`;
+    const numericColumns = new Set(sheet.numericColumns || []);
     const columns = sheet.widths.map((width, i) => `<col min="${i + 1}" max="${i + 1}" width="${width}" customWidth="1"/>`).join('');
-    const data = rows.map((row, i) => `<row r="${i + 1}"${i ? '' : ' ht="24" customHeight="1"'}>${row.map((value, j) => `<c r="${columnName(j + 1)}${i + 1}" t="inlineStr" s="${i ? 2 : 1}"><is><t xml:space="preserve">${xmlEscape(value)}</t></is></c>`).join('')}</row>`).join('');
+    const data = rows.map((row, i) => `<row r="${i + 1}"${i ? '' : ' ht="24" customHeight="1"'}>${row.map((value, j) => {
+      const ref = `${columnName(j + 1)}${i + 1}`;
+      return i && numericColumns.has(j) && typeof value === 'number' && Number.isFinite(value)
+        ? `<c r="${ref}" t="n" s="2"><v>${String(value)}</v></c>`
+        : `<c r="${ref}" t="inlineStr" s="${i ? 2 : 1}"><is><t xml:space="preserve">${xmlEscape(value)}</t></is></c>`;
+    }).join('')}</row>`).join('');
     return {name: `xl/worksheets/sheet${index + 1}.xml`, data: `${declaration}<worksheet xmlns="${main}"><dimension ref="A1:${end}"/><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>${columns}</cols><sheetData>${data}</sheetData><autoFilter ref="A1:${end}"/></worksheet>`};
   });
   const styles = `${declaration}<styleSheet xmlns="${main}"><fonts count="2"><font><sz val="11"/></font><font><b/><color rgb="FFFFFFFF"/><sz val="11"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF254766"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment vertical="center"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="center"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
@@ -3182,6 +3188,67 @@ function createTeachingContest(contest,rank,members,groupId,core){
   return {contest_id:String(contest.id),name:contest.title,start_time:contest.start_time,end_time:contest.end_time,syncedAt:null,source:'oj',problems,scores,problemResults,identities,outcomes,unsubmitted,classes:[],summary:{expected:members.length,participated:scores.length,scored:scores.length,unsubmitted:unsubmitted.length,average_score:average(scoreValues),contest_max_score:problems.reduce((sum,p)=>sum+p.max_score,0)}};
 }
 
+
+/** Export the selected roster against one observed OJ rank, without cloud collection. */
+function createTeachingScoreExport(view, members, context) {
+  if (view?.source !== 'oj' || !context?.contestId || String(view.contest_id) !== String(context.contestId)) {
+    throw new Error('榜单来源或比赛不匹配，请重新读取当前比赛后导出。');
+  }
+  if (!Array.isArray(members) || !Array.isArray(view.problems) || !Array.isArray(view.scores) || !view.problemResults) {
+    throw new Error('比赛成绩数据不完整，请重新读取榜单。');
+  }
+  const timestamp = (value, label) => {
+    const date = new Date(value);
+    if (!value || !Number.isFinite(date.getTime())) throw new Error(`${label}无效，请重新读取榜单。`);
+    return date.toISOString();
+  };
+  const observedAt = timestamp(context.observedAt, '榜单读取时间');
+  const exportedAt = timestamp(context.exportedAt, '导出时间');
+  const numeric = value => {
+    if (value == null || value === '') return null;
+    if (!['number', 'string'].includes(typeof value) || !Number.isFinite(Number(value))) throw new Error('榜单成绩格式无效，未导出。');
+    return Number(value);
+  };
+  const scores = new Map(view.scores.map(row => [String(row.student_id), row]));
+  const selected = members.map(member => {
+    const id = String(member.studentId ?? '');
+    if (!id.trim()) throw new Error('班级成员缺少学号，无法导出。');
+    const score = scores.get(id);
+    return {member, id, total: score ? numeric(score.total_score) : null, rank: score ? numeric(score.rank) : null};
+  });
+  selected.sort((a, b) => (a.total == null) - (b.total == null) || (b.total ?? 0) - (a.total ?? 0)
+    || (a.rank ?? Infinity) - (b.rank ?? Infinity) || a.id.localeCompare(b.id));
+  const rows = selected.map(({member, id, total, rank}) => [id, member.name, total, rank,
+    ...view.problems.flatMap(problem => {
+      const detail = view.problemResults[id]?.[problem.order_letter];
+      return detail ? [numeric(detail.score), detail.result || '待评测'] : [null, '未提交'];
+    })]);
+  const headers = ['学号', '姓名', '总分', 'OJ 原始名次', ...view.problems.flatMap(problem => {
+    const label = `${problem.order_letter} · ${problem.title}`;
+    return [label + ' · 分数', label + ' · 判定'];
+  })];
+  const content = createTextXlsx([
+    {name: '成绩表', headers, rows,
+      numericColumns: [2, 3, ...view.problems.map((_, index) => 4 + index * 2)],
+      widths: [18, 16, 12, 16, ...view.problems.flatMap(() => [20, 20])]},
+    {name: '统计范围', headers: ['项目', '内容'], widths: [26, 90], rows: [
+      ['数据来源', 'OJ 当前可见榜单'],
+      ['数据说明', '非云端赛内定稿；比赛结束后的榜单可能包含补题成绩。'],
+      ['课程', context.courseName || ''],
+      ['班级', context.className || '全部班级'],
+      ['含重修', context.includeRetake ? '是' : '否'],
+      ['比赛编号', String(context.contestId)],
+      ['比赛', view.name || String(context.contestId)],
+      ['榜单读取时间（UTC）', observedAt],
+      ['导出时间（UTC）', exportedAt],
+      ['导出人数', String(members.length)]
+    ]}
+  ]);
+  const cleanName = value => String(value ?? '').normalize('NFKC').replace(/[\u0000-\u001f\u007f\\/:*?"<>|]/g, '_').trim().slice(0, 60) || '未命名';
+  return {filename: `${cleanName(context.className || '全部班级')}-${cleanName(view.name || context.contestId)}-成绩.xlsx`,
+    blob: new Blob([content], {type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})};
+}
+
 function teachingGroups(doc){
   const heading=[...doc.querySelectorAll('h1,h2,h3')].find(h=>h.textContent.trim()==='可管理的所有小组');
   if(!heading)throw Error('请先登录 OJ，再读取小组');
@@ -3284,6 +3351,8 @@ function mountClassManager(core,contestCore,upsolveCore,upsolveReader,reviewCore
   const currentClass=()=>bootstrap?.classes.find(k=>k.id===classId),currentCourse=()=>bootstrap?.courses.find(c=>c.id===course);
   const classLabel=name=>bootstrap?.classes.find(k=>k.courseId===course&&k.type===type&&k.name===name)?.label||name;
   const isCollected=()=>['verified','live'].includes(contests.find(c=>c.id===cid)?.state);
+  const localScoreExport=()=>!isCollected()&&data?.source==='oj'&&String(data.contest_id)===cid&&/^E\d+(?:\D|$)/i.test(data.name?.trim()||'');
+  let exporting=false;
   const selectedMembers=()=>members.filter(m=>includeRetake||!m.isRetake);
   const query=()=>({course,class_id:classId,klass_type:type,include_retake:includeRetake,include_special:includeSpecial});
   const save=()=>localStorage.setItem(prefKey,JSON.stringify({course,classId,type,cid,mode,tab,includeRetake,includeSpecial}));
@@ -3377,7 +3446,7 @@ function mountClassManager(core,contestCore,upsolveCore,upsolveReader,reviewCore
     scheduleLive();$('#page-title').textContent=titles[mode];$('#page-meta').textContent=[currentCourse()?.semester,currentClass()?.label||'全部班级',data?(basicPage()&&data.liveAt?`更新于 ${stamp(data.liveAt)}`:isCollected()?`同步于 ${stamp(data.syncedAt)}`:'OJ 榜单'):''].filter(Boolean).join(' · ');
     for(const b of root.querySelectorAll('[data-page]')){b.disabled=!!cid&&!isCollected()&&['review','semester','upsolve'].includes(b.dataset.page);if(b.dataset.page===mode)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');}
     for(const b of root.querySelectorAll('[data-tab]')){b.disabled=b.dataset.tab==='process'&&!isCollected();b.setAttribute('aria-selected',String(b.dataset.tab===tab));}
-    $('#contest-toolbar').hidden=mode==='overview';$('#contest-select').closest('label').hidden=mode==='semester';$('#contest-tabs').hidden=mode!=='contest';$('#review-pane').hidden=mode!=='review';$('#export-data').hidden=!['contest','semester'].includes(mode);$('#export-data').disabled=mode==='contest'&&(!data||!isCollected());$('#project-data').hidden=mode!=='contest';$('#project-data').disabled=!data||!isCollected();
+    $('#contest-toolbar').hidden=mode==='overview';$('#contest-select').closest('label').hidden=mode==='semester';$('#contest-tabs').hidden=mode!=='contest';$('#review-pane').hidden=mode!=='review';$('#export-data').hidden=!['contest','semester'].includes(mode);$('#export-data').disabled=exporting||mode==='contest'&&(!data||!isCollected()&&!localScoreExport());$('#export-data').title=localScoreExport()?'导出 OJ 当前可见榜单；赛后可能包含补题成绩':'导出云端已采集成绩';$('#project-data').hidden=mode!=='contest';$('#project-data').disabled=!data||!isCollected();
     const out=$('#page-content');out.hidden=mode==='review';out.replaceChildren();
     review.setActive(mode==='review'&&!!data&&isCollected());
     if(!bootstrap?.classes.some(k=>k.courseId===course&&!k.archived)){const empty=make('div',null,'empty');empty.append(make('p',currentCourse()?.pendingSync?'暂无同步数据':'暂无班级'),currentCourse()?.pendingSync?link('在 OJ 中查看',accodingPath('/group/'+currentCourse().groupId+'/index')):link('前往管理后台',client.base()+'/'));out.append(empty);return;}
@@ -3526,7 +3595,21 @@ function mountClassManager(core,contestCore,upsolveCore,upsolveReader,reviewCore
   $('#course-select').onchange=()=>{course=$('#course-select').value;classId=cid='';run(loadScope);};$('#class-type').onchange=()=>{type=$('#class-type').value;classId='';run(loadScope);};$('#class-select').onchange=()=>{classId=$('#class-select').value;run(loadScope);};$('#contest-select').onchange=()=>{cid=$('#contest-select').value;reset();save();run(loadPage);};
   $('#include-retake').onchange=()=>{includeRetake=$('#include-retake').checked;run(loadScope);};$('#include-special').onchange=()=>{includeSpecial=$('#include-special').checked;run(loadScope);};$('#refresh-data').onclick=()=>run(async()=>{await client.clearCache();await connectExisting();});
   $('#close-student').onclick=()=>{studentVersion++;$('#student-drawer').hidden=true;};$('#student-drawer').onclick=e=>{if(e.target===$('#student-drawer'))$('#close-student').click();};$('#project-data').onclick=()=>run(project);
-  $('#export-data').onclick=()=>run(async()=>{const blob=await request('/export/'+(mode==='semester'?'semester':'contest'),{query:{...query(),contest_id:cid},blob:true});const url=URL.createObjectURL(blob),a=link('下载',url);a.download=(currentClass()?.name||currentCourse()?.name)+(mode==='semester'?'-学期分析':'-'+data.name)+'.xlsx';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
+  $('#export-data').onclick=()=>run(async()=>{
+    if(exporting||mode==='contest'&&(!data||!isCollected()&&!localScoreExport()))return;
+    const token=generation,current=cid,exportMode=mode,context={contestId:cid,courseName:currentCourse()?.name,className:currentClass()?.name||'全部班级',includeRetake};
+    const filename=(currentClass()?.name||currentCourse()?.name)+(mode==='semester'?'-学期分析':'-'+data.name)+'.xlsx';
+    exporting=true;$('#export-data').disabled=true;
+    try{
+      let result;
+      if(mode==='contest'&&localScoreExport()){
+        if(!await readRank(true)||token!==generation||current!==cid||exportMode!==mode)return;
+        result=createTeachingScoreExport(data,selectedMembers(),{...context,observedAt:data.liveAt,exportedAt:new Date().toISOString()});
+      }else result={blob:await request('/export/'+(mode==='semester'?'semester':'contest'),{query:{...query(),contest_id:cid},blob:true}),filename};
+      if(token!==generation||current!==cid||exportMode!==mode)return;
+      const url=URL.createObjectURL(result.blob),a=link('下载',url);a.download=result.filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    }finally{exporting=false;draw();}
+  });
   root.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('#projection').hidden)closeProjection();else if(!$('#student-drawer').hidden)$('#close-student').click();else close();}if(e.key==='Tab'&&!$('.overlay').hidden){const scope=!$('#student-drawer').hidden?$('#student-drawer'):$('.overlay');const controls=[...scope.querySelectorAll('button,input,select,a[href],summary')].filter(n=>!n.disabled&&n.getClientRects().length),first=controls[0],last=controls.at(-1);if(e.shiftKey&&root.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&root.activeElement===last){e.preventDefault();first.focus();}}});
   document.addEventListener('visibilitychange',()=>{if(!document.hidden&&running()&&basicPage()&&!$('.overlay').hidden&&$('#projection').hidden)run(async()=>{if(await readRank(true))drawLive();});else scheduleLive();});
   document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement&&!$('#projection').hidden)closeProjection();});

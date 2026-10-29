@@ -16,6 +16,8 @@ function mountClassManager(core,contestCore,upsolveCore,upsolveReader,reviewCore
   const currentClass=()=>bootstrap?.classes.find(k=>k.id===classId),currentCourse=()=>bootstrap?.courses.find(c=>c.id===course);
   const classLabel=name=>bootstrap?.classes.find(k=>k.courseId===course&&k.type===type&&k.name===name)?.label||name;
   const isCollected=()=>['verified','live'].includes(contests.find(c=>c.id===cid)?.state);
+  const localScoreExport=()=>!isCollected()&&data?.source==='oj'&&String(data.contest_id)===cid&&/^E\d+(?:\D|$)/i.test(data.name?.trim()||'');
+  let exporting=false;
   const selectedMembers=()=>members.filter(m=>includeRetake||!m.isRetake);
   const query=()=>({course,class_id:classId,klass_type:type,include_retake:includeRetake,include_special:includeSpecial});
   const save=()=>localStorage.setItem(prefKey,JSON.stringify({course,classId,type,cid,mode,tab,includeRetake,includeSpecial}));
@@ -109,7 +111,7 @@ function mountClassManager(core,contestCore,upsolveCore,upsolveReader,reviewCore
     scheduleLive();$('#page-title').textContent=titles[mode];$('#page-meta').textContent=[currentCourse()?.semester,currentClass()?.label||'全部班级',data?(basicPage()&&data.liveAt?`更新于 ${stamp(data.liveAt)}`:isCollected()?`同步于 ${stamp(data.syncedAt)}`:'OJ 榜单'):''].filter(Boolean).join(' · ');
     for(const b of root.querySelectorAll('[data-page]')){b.disabled=!!cid&&!isCollected()&&['review','semester','upsolve'].includes(b.dataset.page);if(b.dataset.page===mode)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');}
     for(const b of root.querySelectorAll('[data-tab]')){b.disabled=b.dataset.tab==='process'&&!isCollected();b.setAttribute('aria-selected',String(b.dataset.tab===tab));}
-    $('#contest-toolbar').hidden=mode==='overview';$('#contest-select').closest('label').hidden=mode==='semester';$('#contest-tabs').hidden=mode!=='contest';$('#review-pane').hidden=mode!=='review';$('#export-data').hidden=!['contest','semester'].includes(mode);$('#export-data').disabled=mode==='contest'&&(!data||!isCollected());$('#project-data').hidden=mode!=='contest';$('#project-data').disabled=!data||!isCollected();
+    $('#contest-toolbar').hidden=mode==='overview';$('#contest-select').closest('label').hidden=mode==='semester';$('#contest-tabs').hidden=mode!=='contest';$('#review-pane').hidden=mode!=='review';$('#export-data').hidden=!['contest','semester'].includes(mode);$('#export-data').disabled=exporting||mode==='contest'&&(!data||!isCollected()&&!localScoreExport());$('#export-data').title=localScoreExport()?'导出 OJ 当前可见榜单；赛后可能包含补题成绩':'导出云端已采集成绩';$('#project-data').hidden=mode!=='contest';$('#project-data').disabled=!data||!isCollected();
     const out=$('#page-content');out.hidden=mode==='review';out.replaceChildren();
     review.setActive(mode==='review'&&!!data&&isCollected());
     if(!bootstrap?.classes.some(k=>k.courseId===course&&!k.archived)){const empty=make('div',null,'empty');empty.append(make('p',currentCourse()?.pendingSync?'暂无同步数据':'暂无班级'),currentCourse()?.pendingSync?link('在 OJ 中查看',accodingPath('/group/'+currentCourse().groupId+'/index')):link('前往管理后台',client.base()+'/'));out.append(empty);return;}
@@ -258,7 +260,21 @@ function mountClassManager(core,contestCore,upsolveCore,upsolveReader,reviewCore
   $('#course-select').onchange=()=>{course=$('#course-select').value;classId=cid='';run(loadScope);};$('#class-type').onchange=()=>{type=$('#class-type').value;classId='';run(loadScope);};$('#class-select').onchange=()=>{classId=$('#class-select').value;run(loadScope);};$('#contest-select').onchange=()=>{cid=$('#contest-select').value;reset();save();run(loadPage);};
   $('#include-retake').onchange=()=>{includeRetake=$('#include-retake').checked;run(loadScope);};$('#include-special').onchange=()=>{includeSpecial=$('#include-special').checked;run(loadScope);};$('#refresh-data').onclick=()=>run(async()=>{await client.clearCache();await connectExisting();});
   $('#close-student').onclick=()=>{studentVersion++;$('#student-drawer').hidden=true;};$('#student-drawer').onclick=e=>{if(e.target===$('#student-drawer'))$('#close-student').click();};$('#project-data').onclick=()=>run(project);
-  $('#export-data').onclick=()=>run(async()=>{const blob=await request('/export/'+(mode==='semester'?'semester':'contest'),{query:{...query(),contest_id:cid},blob:true});const url=URL.createObjectURL(blob),a=link('下载',url);a.download=(currentClass()?.name||currentCourse()?.name)+(mode==='semester'?'-学期分析':'-'+data.name)+'.xlsx';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
+  $('#export-data').onclick=()=>run(async()=>{
+    if(exporting||mode==='contest'&&(!data||!isCollected()&&!localScoreExport()))return;
+    const token=generation,current=cid,exportMode=mode,context={contestId:cid,courseName:currentCourse()?.name,className:currentClass()?.name||'全部班级',includeRetake};
+    const filename=(currentClass()?.name||currentCourse()?.name)+(mode==='semester'?'-学期分析':'-'+data.name)+'.xlsx';
+    exporting=true;$('#export-data').disabled=true;
+    try{
+      let result;
+      if(mode==='contest'&&localScoreExport()){
+        if(!await readRank(true)||token!==generation||current!==cid||exportMode!==mode)return;
+        result=createTeachingScoreExport(data,selectedMembers(),{...context,observedAt:data.liveAt,exportedAt:new Date().toISOString()});
+      }else result={blob:await request('/export/'+(mode==='semester'?'semester':'contest'),{query:{...query(),contest_id:cid},blob:true}),filename};
+      if(token!==generation||current!==cid||exportMode!==mode)return;
+      const url=URL.createObjectURL(result.blob),a=link('下载',url);a.download=result.filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    }finally{exporting=false;draw();}
+  });
   root.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('#projection').hidden)closeProjection();else if(!$('#student-drawer').hidden)$('#close-student').click();else close();}if(e.key==='Tab'&&!$('.overlay').hidden){const scope=!$('#student-drawer').hidden?$('#student-drawer'):$('.overlay');const controls=[...scope.querySelectorAll('button,input,select,a[href],summary')].filter(n=>!n.disabled&&n.getClientRects().length),first=controls[0],last=controls.at(-1);if(e.shiftKey&&root.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&root.activeElement===last){e.preventDefault();first.focus();}}});
   document.addEventListener('visibilitychange',()=>{if(!document.hidden&&running()&&basicPage()&&!$('.overlay').hidden&&$('#projection').hidden)run(async()=>{if(await readRank(true))drawLive();});else scheduleLive();});
   document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement&&!$('#projection').hidden)closeProjection();});

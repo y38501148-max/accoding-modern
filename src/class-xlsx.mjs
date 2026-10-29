@@ -195,7 +195,7 @@ export const serializeClassScoreXlsx = createClassScoreXlsx;
 export const buildClassScoreXlsx = createClassScoreXlsx;
 export function createClassScoreXlsxBlob(matrix) { return new Blob([createClassScoreXlsx(matrix)], {type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}); }
 
-/** Styled text-only worksheets: identifiers and formula-like text stay literal. */
+/** Styled literal worksheets; optional zero-based numericColumns accept finite numbers. */
 export function createTextXlsx(sheets) {
   const main = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
   const rel = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
@@ -203,8 +203,14 @@ export function createTextXlsx(sheets) {
   const declaration = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
   const files = sheets.map((sheet, index) => {
     const rows = [sheet.headers, ...sheet.rows], end = `${columnName(sheet.headers.length)}${rows.length}`;
+    const numericColumns = new Set(sheet.numericColumns || []);
     const columns = sheet.widths.map((width, i) => `<col min="${i + 1}" max="${i + 1}" width="${width}" customWidth="1"/>`).join('');
-    const data = rows.map((row, i) => `<row r="${i + 1}"${i ? '' : ' ht="24" customHeight="1"'}>${row.map((value, j) => `<c r="${columnName(j + 1)}${i + 1}" t="inlineStr" s="${i ? 2 : 1}"><is><t xml:space="preserve">${xmlEscape(value)}</t></is></c>`).join('')}</row>`).join('');
+    const data = rows.map((row, i) => `<row r="${i + 1}"${i ? '' : ' ht="24" customHeight="1"'}>${row.map((value, j) => {
+      const ref = `${columnName(j + 1)}${i + 1}`;
+      return i && numericColumns.has(j) && typeof value === 'number' && Number.isFinite(value)
+        ? `<c r="${ref}" t="n" s="2"><v>${String(value)}</v></c>`
+        : `<c r="${ref}" t="inlineStr" s="${i ? 2 : 1}"><is><t xml:space="preserve">${xmlEscape(value)}</t></is></c>`;
+    }).join('')}</row>`).join('');
     return {name: `xl/worksheets/sheet${index + 1}.xml`, data: `${declaration}<worksheet xmlns="${main}"><dimension ref="A1:${end}"/><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>${columns}</cols><sheetData>${data}</sheetData><autoFilter ref="A1:${end}"/></worksheet>`};
   });
   const styles = `${declaration}<styleSheet xmlns="${main}"><fonts count="2"><font><sz val="11"/></font><font><b/><color rgb="FFFFFFFF"/><sz val="11"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF254766"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment vertical="center"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="center"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;

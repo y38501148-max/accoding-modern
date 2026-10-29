@@ -1,5 +1,7 @@
 # Accoding Modern
 
+E 赛可在「教学工作台 → 比赛分析」直接导出成绩。未采集的 E 赛会先刷新 OJ 榜单，再按当前班级和“含重修学生”筛选生成 Excel；包含总分、OJ 原始名次、逐题分数与判定。“统计范围”工作表记录数据来源、读取时间和导出时间；赛后可见榜单可能包含补题成绩。已采集比赛继续使用云端成绩导出。
+
 北航 Accoding 管理站的 Tampermonkey 用户脚本，提供界面美化、班级教学工作台、赛事统计、代码复核与题目编辑工具，沿用原站账号和权限。
 
 [安装 / 更新脚本](https://raw.githubusercontent.com/y38501148-max/accoding-modern/main/accoding-modern.user.js) · [版本与更新记录](https://github.com/y38501148-max/accoding-modern/releases) · [问题反馈](https://github.com/y38501148-max/accoding-modern/issues)
