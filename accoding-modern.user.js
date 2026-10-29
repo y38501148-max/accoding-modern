@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Accoding Modern · 北航 OJ 管理界面
 // @namespace    local.accoding.modern
-// @version      1.24.7
+// @version      1.24.8
 // @description  界面美化、教学工作台、按题筛选通过提交、页内代码复核、独立补题排行榜与提交查看、赛事统计看板、Markdown 兼容编辑与批量测试点选择，保留原站登录和操作。
 // @include      https://accoding.buaa.edu.cn:4000/*
 // @include      https://accoding-4000.e1.buaa.edu.cn/*
@@ -23,7 +23,7 @@
 
 (() => {
 'use strict';
-const ACCODING_MODERN_VERSION="1.24.7";
+const ACCODING_MODERN_VERSION="1.24.8";
 // Runtime URL compatibility for the direct site and BUAA VPN reverse proxy.
 // The VPN keeps the upstream app under /https-4000/<opaque-token>/, so absolute
 // root requests and pathname checks must be evaluated relative to that prefix.
@@ -2170,7 +2170,7 @@ function createAiReviewCore() {
   const api='https://muzermat.online:8443/oj-review-api/v2';
   const apiV4='https://muzermat.online:8443/oj-review-api/v4';
   const apiV3='https://muzermat.online:8443/oj-review-api/v3';
-  const featureLabels=['输入失败防护','讲解性注释','编号步骤','对答式注释','模板化说明','注释密集','生成回答残留','短时间大幅改写','单题码风突变','短时间码风突变','注释表达特征','模型来源注释','代码结构大幅变化','跨题码风变化','罕见共同代码片段','罕见高级用法','快速过题','CE 使用非 C 语言语法','AC 后重复提交码风变化'];
+  const featureLabels=['输入失败防护','讲解性注释','编号步骤','对答式注释','模板化说明','注释密集','生成回答残留','短时间大幅改写','单题码风突变','短时间码风突变','注释表达特征','模型来源注释','代码结构大幅变化','跨题码风变化','罕见共同代码片段','罕见高级用法','快速过题','CE 使用非 C 语言语法','AC 后重复提交码风变化','跨题缩进习惯异常'];
   const selections={candidate:'候选复核',sample:'连续提交抽样',manual:'单独复核'};
   const states={paused:'已暂停',running:'正在复核',completed:'复核完成',completed_with_errors:'已结束，部分失败',failed:'运行失败'};
   const hash=value=>typeof value==='string'&&/^[a-f0-9]{64}$/.test(value);
@@ -2200,6 +2200,12 @@ function createAiReviewCore() {
     const baseline=`目前用于描述习惯的参照代码：${count} 份，覆盖 ${problems} 题。${confirmation}`;
     const habits=Object.entries(summary.habits||{}).map(([kind,habit])=>({kind,habit,text:habit.applicable?`${habit.applicable} 份可比较的代码中，${habit.present??0} 份${kind==='input_guard'?'包含额外输入失败检查':kind==='comment'?'包含说明性注释':'具有这项写法'}。`:`暂无可用于比较${kind==='input_guard'?'输入检查':kind==='comment'?'说明性注释':'这项写法'}的代码。`}));
     return {range,gap,baseline,habits,updated:`统计更新至 ${beijingTime(snapshot.cutoff)}（北京时间）。`,distribution:Object.entries(summary.distribution||{}).map(([id,item])=>({label:contestLabel(id,titles),item,score:summary.member_score?.[id]}))};
+  }
+  function indentationNarrative(record){
+    const fact=record?.rule_metadata?.indentation_outlier;if(!fact)return null;
+    const profile=fact.target_profile||{},names={tab:'Tab',space:'空格',mixed:'混用'};
+    const target=fact.target_style||(fact.baseline_style==='space'?'tab':'space');
+    return {text:fact.explanation||`同场其他 ${fact.baseline_problem_count??0} 题以 ${names[fact.baseline_style]||fact.baseline_style} 缩进为主；本题 ${profile[target+'_lines']??0}/${profile.eligible_lines??0} 条有效缩进行使用${names[target]||target}。`,lines:(profile.evidence_lines||[]).slice(0,12),templates:profile.template_exclusions?.matches||[],scope:'同场其他题对照（可能包含较晚提交）'};
   }
   function contestPairNarrative(record){
     const pair=record?.rule_metadata?.cross_problem_style;
@@ -2270,13 +2276,23 @@ function createAiReviewCore() {
   }
   function hasFlaggedReview(r){return r?.ai_suspected===true&&typeof r.model_digest==='string'&&/^[a-f0-9]{64}$/.test(r.model_digest)&&Number.isFinite(r.score)&&Number.isFinite(r.threshold)&&r.score>=r.threshold;}
   function members(rows){return new Map(rows.filter(m=>m.status==='matched'&&/^[1-9]\d*$/.test(String(m.userId))).map(m=>[String(m.userId),m]));}
+  async function readServiceJson(response){
+    let value,valid=true;const status=response.status||(response.ok?200:0);
+    try{value=typeof response.text==='function'?JSON.parse(await response.text()):await response.json();}catch(error){if(error.name==='AbortError')throw error;valid=false;}
+    if(!response.ok||!valid){
+      const detail=valid?value?.detail:null,message=typeof detail==='object'&&detail?detail.message:typeof detail==='string'?detail:null;
+      const error=new Error(message||(!response.ok?`复核服务暂时无法访问（HTTP ${status}），请稍后重试`:`复核服务返回了非 JSON 页面（HTTP ${status}），请稍后重试`));
+      error.httpStatus=status;error.code=detail?.code||(!valid?'invalid_response':undefined);throw error;
+    }
+    return value;
+  }
   function client(getToken,fetcher=fetch){
     async function request(path,body,signal){
       const token=getToken().trim();if(!token)throw new Error('请先在复核设置中填写只读令牌。');
       const res=await fetcher(api+path,{method:body?'POST':'GET',headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},credentials:'omit',cache:'no-store',signal,body:body?JSON.stringify(body):undefined});
       if(res.status===404&&path.startsWith('/submissions/'))return null;
-      if(!res.ok)throw new Error(`复核读取失败（HTTP ${res.status}）。${[401,403].includes(res.status)?'请检查只读令牌。':''}`);
-      return res.json();
+      if(!res.ok&&[401,403].includes(res.status))throw new Error(`复核读取失败（HTTP ${res.status}）。请检查只读令牌。`);
+      return readServiceJson(res);
     }
     return {
       progress:(contest,signal)=>request(`/contests/${contest}/progress`,null,signal),
@@ -2294,10 +2310,9 @@ function createAiReviewCore() {
     const remember=(cache,key,value)=>{cache.delete(key);cache.set(key,value);if(cache.size>128)cache.delete(cache.keys().next().value);return value;};
     async function request(path,body,signal,absent=false,write=false,writeToken){
       const token=version===4&&!write?'':(writeToken??getToken()).trim();if(version!==4&&!token)throw new Error('请先在复核设置中填写只读令牌。');
-      const res=await fetcher((version===4?apiV4:apiV3)+path,{method:body?'POST':'GET',headers:{...(token?{Authorization:'Bearer '+token}:{}),...(version===4?{'X-Review-State-Protocol':'2'}:{}),...(body?{'Content-Type':'application/json'}:{})},credentials:'omit',cache:'no-store',signal,body:body?JSON.stringify(body):undefined});
+      const res=await fetcher((version===4?apiV4:apiV3)+path,{method:body?'POST':'GET',headers:{...(token?{Authorization:'Bearer '+token}:{}),...(version===4?{'X-Review-State-Protocol':'2','X-OJ-Review-Capabilities':'indentation-style-v1'}:{}),...(body?{'Content-Type':'application/json'}:{})},credentials:'omit',cache:'no-store',signal,body:body?JSON.stringify(body):undefined});
       if(res.status===404&&absent)return null;
-      if(!res.ok){let body={};try{body=await res.json();}catch{}const error=new Error(body.detail||`复核请求失败（HTTP ${res.status}）`);error.httpStatus=res.status;throw error;}
-      return res.json();
+      return readServiceJson(res);
     }
     async function runs(path,signal,contest){const r=await request(path,null,signal);if(!Array.isArray(r.runs)||r.runs.some(x=>typeof x.run_id!=='string'||(Object.hasOwn(x,'publication_ready')&&typeof x.publication_ready!=='boolean')||!hash(x.configuration_sha256)||(contest!==undefined&&x.contest_id!==Number(contest))))throw new Error('运行清单格式或比赛不一致');return r;}
     async function reviewRecord(r,id,runId){
@@ -2486,7 +2501,7 @@ function createAiReviewCore() {
     }
     solve(a,b,1,1);return output;
   }
-  return {createPageCache:createReviewPageCache,contestPairNarrative,recomputeNotice,profileRecompute,collectedContests,courseContests,contestLabel,beijingTime,profileNarrative,selectReviewRun,humanLabels,humanState,feedbackPacket,inReviewFilter,scoreSummary,submissionUrl,exportTables,reviewCursor,lineDiff,api,apiV3,apiV4,selections,states,reviewStates,featureLabels,members,hasFlaggedReview,hasFeatureReview,hasReviewRecord,verifySource,sourceVariants,sourceFromOj,client,featureClient};
+  return {createPageCache:createReviewPageCache,indentationNarrative,contestPairNarrative,recomputeNotice,profileRecompute,collectedContests,courseContests,contestLabel,beijingTime,profileNarrative,selectReviewRun,humanLabels,humanState,feedbackPacket,inReviewFilter,scoreSummary,submissionUrl,exportTables,reviewCursor,lineDiff,api,apiV3,apiV4,selections,states,reviewStates,featureLabels,members,hasFlaggedReview,hasFeatureReview,hasReviewRecord,verifySource,sourceVariants,sourceFromOj,client,featureClient};
 }
 
 
@@ -3035,6 +3050,8 @@ function createAiReviewPanel(container,core,getContext,_readMetadata,options={})
   function sourceLink(id,text){const a=el('a',text||`提交 #${id}`);a.href=core.submissionUrl(id);a.target='_blank';a.rel='noopener noreferrer';return a;}
   function renderRuleFacts(target,r){
     const fact=r.rule_metadata;if(!fact)return;const box=el('section');box.append(el('h3','命中事实与历史解释'));
+    const indentation=core.indentationNarrative(r);
+    if(indentation){box.append(el('h4','跨题缩进习惯异常'),el('p',indentation.text),el('p',indentation.scope));for(const line of indentation.lines)box.append(pre(`第 ${line.line} 行 · ${line.style} · ${line.prefix_visualized}`));const detail=el('details');detail.append(el('summary','模板排除证据'),pre(JSON.stringify(indentation.templates,null,2)));box.append(detail);}
     const pair=core.contestPairNarrative(r);
     if(pair){
       const panel=el('section');panel.dataset.contestPair='1';

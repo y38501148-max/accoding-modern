@@ -276,3 +276,19 @@ test('feedback-invalidated comparisons explain recomputation without changing in
   assert.match(core.recomputeNotice({scope_evidence_status:'baseline_feedback_changed'}),/重新核查并重跑/);
   assert.equal(core.profileRecompute({profile:{evidence:[changed]}},changed).count,1);
 });
+
+test('new clients negotiate indentation rule support and keep raw whitespace evidence',async()=>{
+  const calls=[];const c=core.featureClient(()=>'',async(url,options)=>{calls.push(options);return {ok:true,json:async()=>({runs:[]})}},4);
+  await c.progress(1299);
+  assert.equal(calls[0].headers['X-OJ-Review-Capabilities'],'indentation-style-v1');
+  assert.ok(core.featureLabels.includes('跨题缩进习惯异常'));
+  const narrative=core.indentationNarrative({rule_metadata:{indentation_outlier:{baseline_problem_count:4,baseline_style:'tab',target_profile:{eligible_lines:25,space_lines:22,evidence_lines:[{line:8,style:'space',prefix_visualized:'····'}]}}}});
+  assert.match(narrative.scope,/同场其他题/);assert.equal(narrative.lines[0].line,8);assert.match(narrative.text,/22\/25/);
+});
+
+for(const status of [503,530,200])test(`review HTML response HTTP ${status} produces a service error and the next attempt succeeds`,async()=>{
+  let broken=true;
+  const client=core.featureClient(()=>'',async()=>broken?new Response('<!DOCTYPE html><title>Service unavailable</title>',{status}):new Response('{"runs":[]}',{status:200}),4);
+  await assert.rejects(client.progress(1299),error=>error.httpStatus===status&&error.code==='invalid_response'&&error.message.includes('HTTP '+status)&&!error.message.includes('Unexpected'));
+  broken=false;assert.deepEqual(await client.progress(1299),{runs:[]});
+});

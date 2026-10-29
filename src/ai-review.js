@@ -220,6 +220,8 @@ function createAiReviewPanel(container,core,getContext,_readMetadata,options={})
   function sourceLink(id,text){const a=el('a',text||`提交 #${id}`);a.href=core.submissionUrl(id);a.target='_blank';a.rel='noopener noreferrer';return a;}
   function renderRuleFacts(target,r){
     const fact=r.rule_metadata;if(!fact)return;const box=el('section');box.append(el('h3','命中事实与历史解释'));
+    const indentation=core.indentationNarrative(r);
+    if(indentation){box.append(el('h4','跨题缩进习惯异常'),el('p',indentation.text),el('p',indentation.scope));for(const line of indentation.lines)box.append(pre(`第 ${line.line} 行 · ${line.style} · ${line.prefix_visualized}`));const detail=el('details');detail.append(el('summary','模板排除证据'),pre(JSON.stringify(indentation.templates,null,2)));box.append(detail);}
     const pair=core.contestPairNarrative(r);
     if(pair){
       const panel=el('section');panel.dataset.contestPair='1';
