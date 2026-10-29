@@ -1,3 +1,32 @@
+export function createReviewPageCache({ttl=120000,limit=24,now=Date.now}={}) {
+  const pages=new Map();let generation=0;
+  const clone=value=>structuredClone(value);
+  function clear(){generation++;for(const entry of pages.values())entry.controller?.abort();pages.clear();}
+  function read(key,load,signal){
+    signal?.throwIfAborted();
+    let entry=pages.get(key);
+    if(entry&&entry.expires<=now()){entry.controller?.abort();pages.delete(key);entry=null;}
+    if(!entry){
+      const controller=new AbortController(),version=generation;
+      entry={controller,expires:Infinity,promise:null};pages.set(key,entry);
+      const current=entry,timeout=setTimeout(()=>controller.abort(),20000);
+      current.promise=Promise.resolve().then(()=>load(controller.signal)).then(value=>{
+        if(version!==generation||controller.signal.aborted)throw new DOMException('Aborted','AbortError');
+        current.expires=now()+ttl;return clone(value);
+      }).catch(error=>{if(pages.get(key)===current)pages.delete(key);throw error;}).finally(()=>{clearTimeout(timeout);current.controller=null;});
+      while(pages.size>limit){const oldest=pages.keys().next().value;pages.get(oldest).controller?.abort();pages.delete(oldest);}
+    }else{pages.delete(key);pages.set(key,entry);}
+    return new Promise((resolve,reject)=>{
+      const abort=()=>{cleanup();reject(signal.reason||new DOMException('Aborted','AbortError'));};
+      const cleanup=()=>signal?.removeEventListener('abort',abort);
+      signal?.addEventListener('abort',abort,{once:true});
+      entry.promise.then(value=>{cleanup();if(signal?.aborted)abort();else resolve(clone(value));},error=>{cleanup();reject(error);});
+      if(signal?.aborted)abort();
+    });
+  }
+  return {read,clear};
+}
+
 export function createAiReviewCore() {
   const api='https://muzermat.online:8443/oj-review-api/v2';
   const apiV4='https://muzermat.online:8443/oj-review-api/v4';
@@ -66,7 +95,7 @@ export function createAiReviewCore() {
     return {runs,selected:explicit?runs.find(run=>run.run_id===preferred):latest,latest,explicit,pending:runs.filter(run=>run.publication_ready===false)};
   }
   function humanState(status){const state={ordinary:'reviewed_no_ai',uncertain:'reviewed_uncertain',suspected:'reviewed_ai'}[status];if(!state)throw new Error('人工结论格式无效，请升级插件或联系管理员。');return state;}
-  function validAnnotation(a){return a&&Object.hasOwn(humanLabels,a.status)&&Number.isInteger(a.id)&&a.id>0&&typeof a.reason==='string'&&!!a.reason.trim();}
+  function validAnnotation(a){return a&&Object.hasOwn(humanLabels,a.status)&&Number.isInteger(a.id)&&a.id>0&&typeof a.reason==='string';}
   function feedbackPacket(value){if(!value||!Array.isArray(value.history)||value.history.some(x=>!validAnnotation(x))||(value.latest!=null&&!validAnnotation(value.latest)))throw new Error('人工结论格式无效，请升级插件或联系管理员。');return value;}
   function inReviewFilter(record,filter='queue',problemList=false){if(!Object.hasOwn(reviewStates,record.review_status))throw new Error('核查状态格式无效');return (problemList||filter==='all'||filter==='reviewed_no_ai'||record.review_status!=='reviewed_no_ai')&&(filter==='all'||filter==='queue'||filter===record.review_status);}
   function scoreSummary(record){const score=record.scoring||record.scores||{},raw=Object.hasOwn(record,'raw_score')?record.raw_score:record.rule_score??score.raw_score??score.score??score.raw,adjusted=record.profile_scores_valid===false?null:Object.hasOwn(record,'auxiliary_score')?record.auxiliary_score:record.profile_adjusted_score??record.profile_score??score.auxiliary_score??score.profile_adjusted_score??score.adjusted_score??score.adjusted;return {raw:Number.isFinite(raw)?raw:null,adjusted:Number.isFinite(adjusted)?adjusted:null};}
@@ -215,7 +244,7 @@ export function createAiReviewCore() {
     }
     function validatePairFeedback(note,pair){
       const identities=value=>[[String(value.submission_id),value.code_hash],[String(value.reference_id),value.reference_hash]].sort((a,b)=>a[0].localeCompare(b[0]));
-      if(!note||!Number.isInteger(note.id)||note.id<1||!['ordinary','uncertain','suspected'].includes(note.status)||typeof note.reason!=='string'||!note.reason.trim()||note.run_id!==pair.run_id||JSON.stringify(identities(note))!==JSON.stringify(identities(pair)))throw new Error('核对记录与这两份提交不一致');
+      if(!note||!Number.isInteger(note.id)||note.id<1||!['ordinary','uncertain','suspected'].includes(note.status)||typeof note.reason!=='string'||note.run_id!==pair.run_id||JSON.stringify(identities(note))!==JSON.stringify(identities(pair)))throw new Error('核对记录与这两份提交不一致');
       return note;
     }
     async function peerSource(ref,current,signal){
@@ -265,7 +294,8 @@ export function createAiReviewCore() {
         return packet;
       },
       async saveSimilarityFeedback(body,signal,token){
-        if(!['ordinary','uncertain','suspected'].includes(body.status)||!body.reason?.trim())throw new Error('请选择结论并填写理由');
+        if(!['ordinary','uncertain','suspected'].includes(body.status))throw new Error('请选择结论');
+        body={...body,reason:body.reason??''};
         const result=await request('/code-similarity/feedback',body,signal,false,true,token);
         if(result.saved!==true)throw new Error('核对记录未保存');
         validatePairFeedback(result.feedback,body);return result;
@@ -273,7 +303,7 @@ export function createAiReviewCore() {
       session:(signal,write=false)=>request('/feedback/session',null,signal,false,write),
       source:(id,runId,signal)=>request(`/runs/${encodeURIComponent(runId)}/sources/${encodeURIComponent(id)}`,null,signal),
       feedback:async(id,codeHash,runId,signal)=>feedbackPacket(await request(`/feedback/${encodeURIComponent(id)}?code_hash=${encodeURIComponent(codeHash)}&run_id=${encodeURIComponent(runId)}`,null,signal)),
-      saveFeedback:(body,signal)=>{humanState(body.status);if(typeof body.reason!=='string'||!body.reason.trim())throw new Error('请填写核查理由');return request('/feedback',body,signal,false,true);},
+      saveFeedback:(body,signal)=>{humanState(body.status);return request('/feedback',{...body,reason:body.reason??''},signal,false,true);},
       exportEvidence:(runId,offset=0,signal)=>request(`/runs/${encodeURIComponent(runId)}/evidence/export?offset=${offset}&limit=200`,null,signal),
       exportFeedback:(contest,after=0,signal)=>request(`/contests/${encodeURIComponent(contest)}/feedback/export?after=${after}`,null,signal),
       progress:(contest,signal)=>runs(`/contests/${encodeURIComponent(contest)}/progress${version===4?'?include_unpublished=true':''}`,signal,contest),
@@ -317,5 +347,5 @@ export function createAiReviewCore() {
     }
     solve(a,b,1,1);return output;
   }
-  return {contestPairNarrative,recomputeNotice,profileRecompute,collectedContests,courseContests,contestLabel,beijingTime,profileNarrative,selectReviewRun,humanLabels,humanState,feedbackPacket,inReviewFilter,scoreSummary,submissionUrl,exportTables,reviewCursor,lineDiff,api,apiV3,apiV4,selections,states,reviewStates,featureLabels,members,hasFlaggedReview,hasFeatureReview,hasReviewRecord,verifySource,sourceVariants,sourceFromOj,client,featureClient};
+  return {createPageCache:createReviewPageCache,contestPairNarrative,recomputeNotice,profileRecompute,collectedContests,courseContests,contestLabel,beijingTime,profileNarrative,selectReviewRun,humanLabels,humanState,feedbackPacket,inReviewFilter,scoreSummary,submissionUrl,exportTables,reviewCursor,lineDiff,api,apiV3,apiV4,selections,states,reviewStates,featureLabels,members,hasFlaggedReview,hasFeatureReview,hasReviewRecord,verifySource,sourceVariants,sourceFromOj,client,featureClient};
 }

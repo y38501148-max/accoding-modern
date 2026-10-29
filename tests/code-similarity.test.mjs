@@ -56,11 +56,16 @@ test('saving pair feedback uses the write session and its own endpoint',async()=
   return {ok:true,json:async()=>({saved:true,feedback:note})};
  },4);
  assert.equal((await api.saveSimilarityFeedback({...pair,status:'suspected',reason:note.reason},undefined,'reviewer-token')).feedback.id,1);
- await assert.rejects(api.saveSimilarityFeedback({...pair,status:'suspected',reason:' '}),/填写理由/);
+ await assert.rejects(api.saveSimilarityFeedback({...pair,status:'unknown',reason:' '},undefined,'reviewer-token'),/选择结论/);
 });
 
 test('similarity problem scope starts at E inclusive',()=>{
  const context=vm.createContext({});vm.runInContext(readFileSync(new URL('../src/code-similarity.js',import.meta.url),'utf8'),context);
  for(const label of ['A','B','C','D',''])assert.equal(context.codeSimilarityProblemAllowed({label}),false);
  for(const label of ['E','F','Z','AA'])assert.equal(context.codeSimilarityProblemAllowed({label}),true);
+});
+
+test('empty pair reason remains a valid signed manual annotation',async()=>{
+ const api=createAiReviewCore().featureClient(()=>'',async(url,options)=>({ok:true,json:async()=>({saved:true,feedback:{...note,reason:''}})}),4);
+ assert.equal((await api.saveSimilarityFeedback({...pair,status:'suspected',reason:''},undefined,'writer')).feedback.reason,'');
 });

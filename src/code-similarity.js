@@ -12,7 +12,7 @@ function mountSimilarityFeedback(target,record,match,core,client,{signal,valid,o
   const draftKey='accoding-modern.similarity-note.'+record.run_id+':'+[[pair.submission_id,pair.code_hash],[pair.reference_id,pair.reference_hash]].sort((a,b)=>a[0].localeCompare(b[0])).flat().join(':');
   const mark=el('select');mark.setAttribute('aria-label','查重核对结论');
   for(const [value,title]of [['','选择结论'],...Object.entries(similarityReviewLabels)]){const option=el('option',title);option.value=value;mark.append(option);}
-  const note=el('textarea');note.placeholder='填写核对理由';note.maxLength=3000;note.setAttribute('aria-label','查重核对理由');
+  const note=el('textarea');note.placeholder='核对理由（可选）';note.maxLength=3000;note.setAttribute('aria-label','查重核对理由');
   const save=el('button','保存核对'),refresh=el('button','刷新记录');save.type=refresh.type='button';save.disabled=true;
   const message=el('p','正在加载核对记录…'),historyBox=el('div'),actions=el('div');message.setAttribute('role','status');historyBox.className='ar-similarity-history';actions.className='ar-actions';actions.append(mark,save,refresh);
   target.append(el('h4','查重核对'),note,actions,message,el('h4','修改记录'),historyBox);
@@ -38,7 +38,6 @@ function mountSimilarityFeedback(target,record,match,core,client,{signal,valid,o
   save.onclick=async()=>{
     if(busy||!history)return;
     if(!Object.hasOwn(similarityReviewLabels,mark.value)){message.textContent='请选择结论。';mark.focus();return;}
-    if(!note.value.trim()){message.textContent='请填写理由。';note.focus();return;}
     busy=true;save.disabled=refresh.disabled=true;message.textContent='正在保存…';
     const body={...pair,status:mark.value,reason:note.value.trim(),base_revision:history.latest?.id||0},signature=JSON.stringify(body);
     if(pending?.signature!==signature)pending={signature,request_id:crypto.randomUUID()};
@@ -136,9 +135,10 @@ function createCodeSimilarityPanel(container,core,client,getContext,getScope=()=
   const list=el('div'),pager=el('div');pager.className='pager';
   const style=el('style');style.textContent=`.ar-similarity-record{border:1px solid #dfe7f0;border-radius:10px;padding:14px;margin:12px 0;background:white}.ar-similarity-record h3{font-size:16px;margin:6px 0}.ar-similarity-match{margin:12px 0}.ar-similarity-match summary{cursor:pointer;min-height:44px;padding:10px;background:#edf3ff;border-radius:7px}.ar-similarity-snippets{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;margin:12px 0}.ar-similarity-snippets>div{min-width:0}.ar-similarity-snippets pre{font:12px/1.6 ui-monospace,monospace;background:#f7f9fc;padding:10px;border:1px solid #dce3ed;max-height:500px;overflow:auto;white-space:pre}.ar-similarity-record button{min-height:44px}.ar-similarity-judgement{font-weight:600}.ar-similarity-editor textarea{display:block;box-sizing:border-box;width:100%;min-height:90px;font:inherit;padding:10px;border:1px solid #ccd9e9;border-radius:7px}.ar-similarity-editor h4{margin:18px 0 8px}.ar-similarity-history p{white-space:pre-wrap;margin:6px 0}@media(max-width:700px){.ar-similarity-snippets{grid-template-columns:minmax(0,1fr)}}`;
   controls.append(reviewFilter(problem,'题目'),reviewFilter(run,'核查运行'),reviewFilter(show,'查重范围'),reviewFilter(review,'核对状态'),refresh);container.append(style,controls,status,list,pager);
+  const pageCache=core.createPageCache();
   let generation=0,controller=null,page=0,active=false;
   function stop(){generation++;controller?.abort();}
-  function reset(){stop();page=0;run.replaceChildren();problem.replaceChildren();list.replaceChildren();pager.replaceChildren();status.textContent='';}
+  function reset(){stop();pageCache.clear();page=0;run.replaceChildren();problem.replaceChildren();list.replaceChildren();pager.replaceChildren();status.textContent='';}
   function fill(select,values,keep=select.value){select.replaceChildren();for(const [value,title]of values){const o=el('option',title);o.value=value;select.append(o);}if(values.some(([v])=>v===keep))select.value=keep;}
   async function load(discover=false){
     stop();const version=generation,ctx=getContext(),scope=getScope(),current=ctx.contest?.id;
@@ -159,7 +159,8 @@ function createCodeSimilarityPanel(container,core,client,getContext,getScope=()=
       if(!run.value){status.textContent='暂无查重结果。';return;}
       const query={run_id:run.value,contest_id:Number(current),creator_ids:[...core.members(ctx.summary.rows).keys()],offset:page*30,limit:30,pair_view:true,review_status:review.value,matched_only:show.value==='matched',
         ...(scope?{problem_id:Number(scope.problemId),submission_ids:scope.submissionIds.map(String)}:problem.value==='all'?{}:{problem_id:Number(problem.value)})};
-      const packet=await client.similaritySearch(query,loadSignal);if(!valid())return;
+      const cacheKey=JSON.stringify([key,query]);
+      const packet=await pageCache.read(cacheKey,shared=>client.similaritySearch(query,shared),loadSignal);if(!valid())return;
       if(packet.total&&page*30>=packet.total){page=Math.floor((packet.total-1)/30);void load();return;}
       status.textContent=`全场比较 · 本班涉及 ${packet.pair_count} 对嫌疑代码，涉及 ${packet.source_count} 份提交${show.value==='all'?` · 其他记录 ${packet.status_count} 份`:''}`;
       const members=core.members(ctx.summary.rows);
@@ -169,14 +170,15 @@ function createCodeSimilarityPanel(container,core,client,getContext,getScope=()=
         const ref=record.matches[0]?.reference,peer=ref&&members.get(String(ref.creator_id));
         box.append(el('h3',ref?`${title} ↔ ${peer?.name||ref.name||'用户 '+ref.creator_id} · 提交 #${ref.submission_id}`:title),el('p',p?`${p.label} · ${p.title}`:record.problem_id));
         const content=el('div');box.append(content);list.append(box);
-        renderCodeSimilarity(content,{...record,run_id:run.value},core,client,{signal,valid,getContext,pairView:true,onSaved:()=>void load()});
+        renderCodeSimilarity(content,{...record,run_id:run.value},core,client,{signal,valid,getContext,pairView:true,onSaved:()=>{pageCache.clear();void load();}});
       }
       const back=el('button','上一页'),next=el('button','下一页');back.type=next.type='button';back.disabled=page===0;next.disabled=(page+1)*30>=packet.total;
       back.onclick=()=>{page--;void load();};next.onclick=()=>{page++;void load();};pager.append(el('span',`${page+1} / ${Math.max(1,Math.ceil(packet.total/30))}`),back,next);
+      if((page+1)*30<packet.total){const nextQuery={...query,offset:(page+1)*30};void pageCache.read(JSON.stringify([key,nextQuery]),shared=>client.similaritySearch(nextQuery,shared)).catch(()=>{});}
     }catch(error){if(valid())status.textContent=error.httpStatus===404?'当前复核服务尚未提供代码查重分支。':error.message;}
     finally{if(valid()){refresh.disabled=false;controls.removeAttribute('aria-busy');}}
   }
   for(const s of [problem,run,show,review])s.onchange=()=>{page=0;void load();};
-  refresh.onclick=()=>{page=0;void load(true);};
-  return {reset,setActive(value){active=value;if(value)return load(true);stop();}};
+  refresh.onclick=()=>{pageCache.clear();page=0;void load(true);};
+  return {reset,invalidate:()=>pageCache.clear(),setActive(value){active=value;if(value)return load(true);stop();}};
 }
