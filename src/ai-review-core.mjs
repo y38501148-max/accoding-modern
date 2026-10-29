@@ -132,6 +132,28 @@ export function createAiReviewCore() {
       return res.json();
     }
     async function runs(path,signal,contest){const r=await request(path,null,signal);if(!Array.isArray(r.runs)||r.runs.some(x=>typeof x.run_id!=='string'||(Object.hasOwn(x,'publication_ready')&&typeof x.publication_ready!=='boolean')||!hash(x.configuration_sha256)||(contest!==undefined&&x.contest_id!==Number(contest))))throw new Error('运行清单格式或比赛不一致');return r;}
+    async function reviewRecord(r,id,runId){
+      if(r&&(r.run_id!==runId||String(r.submission_id)!==String(id)))throw new Error('复核详情与所选运行或提交不一致');
+      if(r&&!(version===4?hasReviewRecord(r):hasFeatureReview(r)))throw new Error('复核结果包含当前插件不支持的规则或格式，请更新插件后重试');
+      if(r&&typeof r.code==='string')await verifySource(r.code,r.code_hash);
+      if(r?.feedback){
+        feedbackPacket(r.feedback);
+        for(const note of [r.feedback.latest,...r.feedback.history].filter(Boolean))if(String(note.submission_id)!==String(id)||note.code_hash!==r.code_hash)throw new Error('人工记录与当前源码不一致');
+        if((r.annotation?.id||0)!==(r.feedback.latest?.id||0))throw new Error('人工记录版本与详情不一致');
+      }
+      if(r?.reference_sources){
+        if(!Array.isArray(r.reference_sources)||r.reference_sources.length>128)throw new Error('历史源码身份清单格式无效');
+        for(const source of r.reference_sources){
+          if(!/^[1-9]\d*$/.test(String(source.submission_id))||!hash(source.code_hash)||source.run_id!==runId||String(source.creator_id)!==String(r.creator_id)||source.contest_id!==r.contest_id)throw new Error('历史源码身份与当前运行不一致');
+          remember(sourceCache,version+':'+(version===4?'public':getToken().trim())+':'+runId+':'+source.submission_id+':'+source.code_hash,source);
+        }
+      }
+      return r;
+    }
+    async function detail(id,runId,signal,includeFeedback=false){
+      if(!runId)throw new Error('请先选择核查运行');
+      return reviewRecord(await request(`/runs/${encodeURIComponent(runId)}/submissions/${encodeURIComponent(id)}${version===4?'?include_candidates=true'+(includeFeedback?'&include_feedback=true':''):''}`,null,signal,true),id,runId);
+    }
     async function referenceSource(ref,current,signal){
       signal?.throwIfAborted();
       const id=String(ref?.submission_id||''),author=String(current?.creator_id||'');
@@ -142,7 +164,8 @@ export function createAiReviewCore() {
       const explicit=ref.run_id||locator;
       if(explicit!=null&&(typeof explicit!=='string'||!explicit||!/^[\w.-]+$/.test(explicit)))throw new Error('历史对照运行编号无效');
       const sameContest=ref.contest_id!=null&&String(ref.contest_id)===String(current.contest_id);
-      const hinted=explicit||(sameContest?current.run_id:null),attempted=new Set();
+      const cachedHere=sourceCache.has(version+':'+(version===4?'public':getToken().trim())+':'+current.run_id+':'+id+':'+ref.code_hash);
+      const hinted=explicit||((sameContest||cachedHere)?current.run_id:null),attempted=new Set();
       function verify(source,run){
         if(!source||String(source.submission_id)!==id||source.code_hash!==ref.code_hash||String(source.creator_id)!==author
           ||(ref.creator_id!=null&&String(source.creator_id)!==String(ref.creator_id))
@@ -206,6 +229,22 @@ export function createAiReviewCore() {
     return {
       referenceSource,
       peerSource,
+      async openList(query,preferred,signal){
+        const packet=await request('/reviews/search',{...query,run_id:preferred,resolve_run:true,include_candidates:true,include_all:true},signal);
+        if(!Array.isArray(packet.runs)||packet.runs.some(run=>typeof run.run_id!=='string'||run.contest_id!==query.contest_id||!hash(run.configuration_sha256)||(Object.hasOwn(run,'publication_ready')&&typeof run.publication_ready!=='boolean')))throw new Error('运行清单格式或比赛不一致');
+        const selected=selectReviewRun(packet.runs,preferred).selected;
+        if(packet.run_id!==(selected?.run_id||null)||!Array.isArray(packet.reviews)||!Number.isInteger(packet.total)||packet.total<0||packet.reviews.length>query.limit)throw new Error('复核 API 返回格式或运行无效');
+        if(packet.reviews.some(r=>!r||r.run_id!==packet.run_id||r.contest_id!==query.contest_id||!query.creator_ids.includes(String(r.creator_id))||!hasReviewRecord(r)))throw new Error('复核结果与当前运行或班级不一致');
+        return packet;
+      },
+      async openReview(id,runId,signal){
+        if(runId)return {record:await detail(id,runId,signal,true)};
+        const packet=await runs(`/submissions/${encodeURIComponent(id)}/runs${version===4?'?include_candidates=true&include_unpublished=true&include_review=true':''}`,signal);
+        const selected=selectReviewRun(packet.runs).selected;
+        const record=Object.hasOwn(packet,'review')?await reviewRecord(packet.review,id,selected?.run_id):selected?await detail(id,selected.run_id,signal,true):null;
+        if(selected&&Object.hasOwn(packet,'review')&&!record)throw new Error('核查运行与合并详情不一致');
+        return {runs:packet.runs,record};
+      },
       async similaritySearch(query,signal){
         const packet=await request('/code-similarity/search',query,signal);
         if(packet.run_id!==query.run_id||packet.contest_id!==query.contest_id||packet.version!=='same-contest-peer-tokens-v1'||!Array.isArray(packet.records)||!Number.isInteger(packet.total)||packet.total<0||packet.records.length>query.limit)throw new Error('代码查重运行或返回格式不一致');
@@ -239,7 +278,7 @@ export function createAiReviewCore() {
       exportFeedback:(contest,after=0,signal)=>request(`/contests/${encodeURIComponent(contest)}/feedback/export?after=${after}`,null,signal),
       progress:(contest,signal)=>runs(`/contests/${encodeURIComponent(contest)}/progress${version===4?'?include_unpublished=true':''}`,signal,contest),
       submissionRuns:(id,signal)=>runs(`/submissions/${encodeURIComponent(id)}/runs${version===4?'?include_candidates=true&include_unpublished=true':''}`,signal),
-      async detail(id,runId,signal){if(!runId)throw new Error('请先选择核查运行');const r=await request(`/runs/${encodeURIComponent(runId)}/submissions/${encodeURIComponent(id)}${version===4?'?include_candidates=true':''}`,null,signal,true);if(r&&(r.run_id!==runId||String(r.submission_id)!==String(id)))throw new Error('复核详情与所选运行或提交不一致');if(r&&!(version===4?hasReviewRecord(r):hasFeatureReview(r)))throw new Error('复核结果包含当前插件不支持的规则或格式，请更新插件后重试');if(r&&typeof r.code==='string')await verifySource(r.code,r.code_hash);return r;},
+      detail,
       async search(query,signal){
         if(!query.run_id)throw new Error('请先选择核查运行');const r=await request('/reviews/search',version===4?{...query,include_candidates:true,include_all:true}:query,signal);
         if(r.run_id!==query.run_id||!Array.isArray(r.reviews)||!Number.isInteger(r.total)||r.total<0||r.reviews.length>query.limit)throw new Error('复核 API 返回格式或运行无效');

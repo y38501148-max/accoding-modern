@@ -10,6 +10,7 @@ function createAiReviewPanel(container,core,getContext,_readMetadata,options={})
   let cursor=null,updateNavigation=()=>{},navigationBusy=false,saving=false,detailResize=null;
   const getToken=()=>writeToken;
   const client=core.featureClient(getToken,typeof reviewFetch==='function'?reviewFetch:fetch,4),size=30;
+  const ojSources=new Map();
   const el=(tag,text)=>{const n=document.createElement(tag);if(text!=null)n.textContent=String(text);return n;};
   const button=(text,fn)=>{const b=el('button',text);b.type='button';b.onclick=fn;return b;};
   const refill=(s,values,keep=s.value)=>{s.replaceChildren();for(const [value,text] of values){const o=el('option',text);o.value=value;s.append(o);}if([...s.options].some(o=>o.value===keep))s.value=keep;};
@@ -55,7 +56,7 @@ function createAiReviewPanel(container,core,getContext,_readMetadata,options={})
   function key(){return contextKey()+':v4:'+runId;}
   function reload(){return options.submissionId?openDetail(options.submissionId):refresh();}
   function stop(){saving=false;detailResize?.disconnect();cursor=null;updateNavigation=()=>{};generation++;controller?.abort();detailVersion++;detailController?.abort();clearTimeout(timer);}
-  function reset(){stop();similarityPanel.reset();scope=null;listDirty=false;listPosition=null;heading.textContent='代码复核';problem.disabled=false;counts=null;rows=[];runs=[];total=page=0;runId='';refill(runHistory,[['latest','最新完整运行']]);detail.hidden=true;detail.replaceChildren();progress.textContent='';message.textContent='读取比赛后，打开代码复核。';draw();}
+  function reset(){stop();ojSources.clear();similarityPanel.reset();scope=null;listDirty=false;listPosition=null;heading.textContent='代码复核';problem.disabled=false;counts=null;rows=[];runs=[];total=page=0;runId='';refill(runHistory,[['latest','最新完整运行']]);detail.hidden=true;detail.replaceChildren();progress.textContent='';message.textContent='读取比赛后，打开代码复核。';draw();}
   function setProblemScope(next){stop();scope=next?{...next,submissionIds:[...next.submissionIds]}:null;page=0;state.value=(options.problemList||next)?'all':'queue';feature.value='all';problem.value=scope?.problemId||'all';problem.disabled=!!scope;heading.textContent=scope?`本题提交核查 · ${scope.title}`:'代码复核';detail.hidden=true;detail.replaceChildren();}
   function query(c,offset=page*size,limit=size){return {contest_id:Number(c.contest.id),creator_ids:[...core.members(c.summary.rows).keys()],offset,limit,run_id:runId,...(scope?{problem_id:Number(scope.problemId),submission_ids:scope.submissionIds}:problem.value==='all'?{}:{problem_id:Number(problem.value)}),...(feature.value==='all'?{}:{label:feature.value}),...(options.problemList||state.value==='all'||state.value==='reviewed_no_ai'?{}:{review_queue_only:true}),...(state.value==='queue'||state.value==='all'?{}:{review_status:state.value})};}
   function fillRuns(values){const selection=core.selectReviewRun(values,runHistory.value);runs=selection.runs;const next=selection.selected?.run_id||'';if(next!==runId)page=0;runId=next;refill(runHistory,[['latest','最新完整运行'],...runs.map(run=>[run.run_id,`${run.publication_ready===false?'待同步 · ':'历史运行 · '}${run.run_id}`])],selection.explicit?runId:'latest');}
@@ -68,9 +69,11 @@ function createAiReviewPanel(container,core,getContext,_readMetadata,options={})
     const current=new AbortController();controller=current;const timeout=setTimeout(()=>current.abort(),120000);
     counts=null;showProgress();rows=[];total=0;draw();message.textContent='正在读取云端复核记录…';
     try{
-      const state=await client.progress(c.contest.id,current.signal);if(v!==generation||k!==contextKey())return;
+      const combined=client.openList?await client.openList(query(c),runHistory.value,current.signal):null;
+      const state=combined||await client.progress(c.contest.id,current.signal);if(v!==generation||k!==contextKey())return;
       fillRuns(state.runs);showProgress();if(!runId){message.textContent=runs.length?'新运行待同步，暂无完整发布结果。可从核查运行中查看同步中的历史。':'尚无核查结果，请先在核查系统发布比赛。';return;}
-      const requestKey=key(),result=await client.search(query(c),current.signal);if(v!==generation||requestKey!==key())return;
+      if(combined&&combined.offset!==page*size){void refresh();return;}
+      const requestKey=key(),result=combined||await client.search(query(c),current.signal);if(v!==generation||requestKey!==key())return;
       const memberMap=core.members(c.summary.rows);rows=result.reviews.map(r=>({...r,member:memberMap.get(String(r.creator_id))}));total=result.total;counts=result.counts||null;showProgress();
       if(total&&page*size>=total){page=Math.floor((total-1)/size);void refresh();return;}
       message.textContent=scope?`${scope.attemptedUsers} 位尝试者按 AC 或最近两次尝试选出 ${scope.submissionIds.length} 条 · 当前显示 ${total} 条`:`${c.className} · ${total} 条`;draw();
@@ -97,7 +100,14 @@ function createAiReviewPanel(container,core,getContext,_readMetadata,options={})
     function flush(){for(let i=0;i<Math.max(removed.length,added.length);i++)box.append(cell(added[i],added[i]?.newLine,added[i]?'add':''),cell(removed[i],removed[i]?.oldLine,removed[i]?'remove':''));removed=[];added=[];}
     for(const line of lines){if(line.kind==='add')added.push(line);else if(line.kind==='remove')removed.push(line);else{flush();box.append(cell(line,line.newLine,''),cell(before===null?null:line,line.oldLine,''));}}flush();return box;
   }
-  async function readOj(id,hash,signal){const res=await fetch(`/submission/${id}`,{credentials:'same-origin',cache:'no-store',signal});if(!res.ok)throw Error('OJ 源码读取失败');const node=new DOMParser().parseFromString(await res.text(),'text/html').querySelector('pre code');if(!node)throw Error('OJ 未返回源码，请先登录 OJ。');return core.sourceFromOj(node.textContent,id,hash);}
+  async function readOj(id,hash,signal){
+    signal?.throwIfAborted();const key=id+':'+hash;
+    if(ojSources.has(key))return ojSources.get(key);
+    const res=await fetch(`/submission/${id}`,{credentials:'same-origin',cache:'no-store',signal});if(!res.ok)throw Error('OJ 源码读取失败');
+    const node=new DOMParser().parseFromString(await res.text(),'text/html').querySelector('pre code');if(!node)throw Error('OJ 未返回源码，请先登录 OJ。');
+    const code=await core.sourceFromOj(node.textContent,id,hash);signal?.throwIfAborted();ojSources.set(key,code);
+    if(ojSources.size>32)ojSources.delete(ojSources.keys().next().value);return code;
+  }
   async function openDetail(id,continuing=false){
     if(!continuing)cursor=core.reviewCursor(rows,page*size,total);
     if(detail.hidden){const overlay=container.closest('.problem-review-page')||container.closest('.overlay');listPosition={listTop:list.scrollTop,listLeft:list.scrollLeft,overlayTop:overlay?.scrollTop||0};}
@@ -105,19 +115,25 @@ function createAiReviewPanel(container,core,getContext,_readMetadata,options={})
     const c=new AbortController(),timeout=setTimeout(()=>c.abort(),120000);detailController=c;
     const valid=()=>n===detailVersion&&base===contextKey();
     try{
-      if(options.submissionId||!runId){const state=await client.submissionRuns(String(id),c.signal);if(!valid())return;fillRuns(state.runs);showProgress();}
+      let r;
+      if(client.openReview){const opened=await client.openReview(String(id),options.submissionId?'':runId,c.signal);if(!valid())return;if(opened.runs){fillRuns(opened.runs);showProgress();}r=opened.record;}
+      else{
+        if(options.submissionId||!runId){const state=await client.submissionRuns(String(id),c.signal);if(!valid())return;fillRuns(state.runs);showProgress();}
+        r=runId?await client.detail(String(id),runId,c.signal):null;
+      }
       if(runId)detail.replaceChildren(el('p','正在读取本场核查结果…'));
-      let r=runId?await client.detail(String(id),runId,c.signal):null;if(!valid())return;
-      if(!r&&runId){const source=await client.source(String(id),runId,c.signal);r={...source,run_id:runId,decision_kind:'unflagged',review_status:'rule_unmatched',result:{label:[],reason:'规则未命中；可人工复核并填写理由。'},evidence:[],code:await readOj(id,source.code_hash,c.signal)};}
       if(!valid())return;
-      if(r&&typeof r.code!=='string')r.code=await readOj(id,r.code_hash,c.signal);
+      if(!r&&runId){const source=await client.source(String(id),runId,c.signal);r={...source,run_id:runId,decision_kind:'unflagged',review_status:'rule_unmatched',result:{label:[],reason:'规则未命中；可人工复核并填写理由。'},evidence:[],code:options.feedbackOnly?await core.sourceFromOj(options.ojText,id,source.code_hash):await readOj(id,source.code_hash,c.signal)};}
+      if(!valid())return;
+      if(r&&options.feedbackOnly)r.code=await core.sourceFromOj(options.ojText,id,r.code_hash);
+      else if(r&&typeof r.code!=='string')r.code=await readOj(id,r.code_hash,c.signal);
       if(!valid())return;
       if(r&&!options.submissionId){const ctx=getContext();if(r.contest_id!==Number(ctx.contest.id)||!core.members(ctx.summary.rows).has(String(r.creator_id)))throw Error('详情与当前班级不一致');}
       if(options.feedbackOnly){
         detail.replaceChildren();
         if(selectedRun()?.publication_ready===false)detail.append(el('p','历史运行待同步：当前资料尚未完整发布。'));
         if(!r){detail.append(el('p',runs.some(run=>run.publication_ready===false)?'新运行待同步，当前完整版本中尚无此提交。':'此提交尚未纳入云端源码清单，暂时无法保存 AI 判定。'));return;}
-        r.code=await core.sourceFromOj(options.ojText,id,r.code_hash);if(!valid())return;
+        if(!valid())return;
         const label=el('p',judgement(r));label.dataset.reviewJudgement='1';label.className='ar-verdict';
         const reason=el('p',r.annotation?.reason||r.result?.reason||'规则未命中');reason.dataset.reviewReason='1';detail.append(label,reason);
         if(r.evidence?.length){const evidence=el('details');evidence.append(el('summary','查看规则依据'));for(const e of r.evidence)evidence.append(el('h4',`第 ${e.start_line}–${e.end_line} 行`),pre(e.quote));detail.append(evidence);}
@@ -168,8 +184,7 @@ function createAiReviewPanel(container,core,getContext,_readMetadata,options={})
           view.replaceChildren(el('p',`正在读取${pairInfo?'配对':'历史'}提交 #${ref.submission_id}…`));
           try{
             let cached=loaded.get(nextPage);
-            if(!cached){const source=await client.referenceSource(ref,r,signal);if(!visible())return;
-              const before=await readOj(ref.submission_id,ref.code_hash,signal);if(!visible())return;cached={source,before};loaded.set(nextPage,cached);}
+            if(!cached){const [source,before]=await Promise.all([client.referenceSource(ref,r,signal),readOj(ref.submission_id,ref.code_hash,signal)]);if(!visible())return;cached={source,before};loaded.set(nextPage,cached);}
             if(!visible())return;const {source,before}=cached;
             const cross=String(source.problem_id)!==String(r.problem_id),kind=pairInfo?'contest_pair':cross?'cross':ref.kind||ref.role||'previous';
             const roleNames={contest_pair:'同场配对对照',cross:'跨题码风对照',previous:'同题上次提交',history:'较早命中',prior_ac:'前一份 AC',baseline:'稳定基线',early_ac:'早期 AC'};
@@ -260,7 +275,7 @@ function createAiReviewPanel(container,core,getContext,_readMetadata,options={})
     }catch(e){if(valid()&&panel.isConnected)content.replaceChildren(el('p','提交读取失败：'+e.message),button('重试',()=>{panel.remove();void showContestSubmissions(r,valid);}));}
   }
   async function feedbackEditor(r,signal,valid,targetOverride=null){
-    let history=await client.feedback(r.submission_id,r.code_hash,r.run_id,signal);if(!valid())return;
+    let history=r.feedback||await client.feedback(r.submission_id,r.code_hash,r.run_id,signal);if(!valid())return;
     const mark=el('select');mark.setAttribute('aria-label','人工复核结论');refill(mark,[['','请选择核查结论'],...Object.entries(labels)]);
     const note=el('textarea');note.className='ar-note';note.placeholder='填写核对理由';note.maxLength=3000;note.setAttribute('aria-label','人工复核理由');
     if(history.latest){mark.value=history.latest.status;note.value=history.latest.reason;}else{mark.value=r.annotation?.status||'';try{const notes=JSON.parse(localStorage.getItem(noteKey)||'{}'),old=notes[r.run_id+':'+r.submission_id+':'+r.code_hash]||notes[r.submission_id+':'+r.code_hash];if(old)note.value=old.note||'';}catch{}}
