@@ -19,6 +19,7 @@ async function renderStatement(view, statement, isCurrent, onProgress) {
     @page{size:A4;margin:0}
     *{box-sizing:border-box}body{margin:0;color:#111;background:white;font:11pt/1.65 "Noto Serif CJK SC","Songti SC","SimSun",serif}
     main{max-width:176mm;margin:24px auto;padding:0 4mm}h1{text-align:center;font-size:20pt;line-height:1.4;margin:0 0 22px}header h1{font-size:24pt;margin:0 0 28px}
+    .problem-heading{break-inside:avoid;page-break-inside:avoid;break-after:avoid;page-break-after:avoid}.problem-heading h1{margin-bottom:8px}.problem-limits{display:flex;justify-content:center;flex-wrap:wrap;gap:4px 24px;margin:0 0 22px;font-size:10pt}
     .problem+.problem{break-before:page;page-break-before:always}h2{font-size:15pt;margin:20px 0 8px}h3{font-size:12pt;margin:16px 0 6px}h1,h2,h3,h4{break-after:avoid;page-break-after:avoid}
     p{margin:8px 0;overflow-wrap:anywhere}ul,ol{padding-left:2em}blockquote{margin:12px 0;padding:0 14px;border-left:3px solid #bbb;color:#444}
     pre{white-space:pre-wrap;overflow-wrap:anywhere;tab-size:4;padding:10px 12px;border:1px solid #ddd;background:#f7f7f7;line-height:1.5}code{font:9pt/1.5 ui-monospace,"SFMono-Regular",Consolas,monospace}pre code{white-space:inherit}pre,table,figure,img{break-inside:avoid;page-break-inside:avoid}
@@ -41,7 +42,11 @@ async function renderStatement(view, statement, isCurrent, onProgress) {
     const content=sheet.tBodies[0].rows[0].cells[0];content.append(header);main.append(sheet);doc.body.append(main);
     for(const p of statement.problems){
       current();progress(`正在排版 ${p.label} 题…`);
-      const section=doc.createElement('section');section.className='problem';const heading=doc.createElement('h1');heading.textContent=`${p.label}  ${p.title}`;section.append(heading);
+      const section=doc.createElement('section');section.className='problem';const heading=doc.createElement('h1');heading.textContent=`${p.label}  ${p.title}`;
+      const problemHeading=doc.createElement('div');problemHeading.className='problem-heading';
+      const limits=doc.createElement('p');limits.className='problem-limits';
+      for(const text of [`时间限制：${p.timeLimit} ms`,`空间限制：${p.memoryLimit} KB`]){const item=doc.createElement('span');item.textContent=text;limits.append(item);}
+      problemHeading.append(heading,limits);section.append(problemHeading);
       const body=doc.createElement('div');body.className='markdown-body';
       const parsed=new DOMParser().parseFromString(pageWindow.markdown.toHTML(p.description,'Maruku'),'text/html');
       parsed.querySelectorAll('script,iframe,object,embed,link,meta,base,style,form,input,button,textarea').forEach(n=>n.remove());
