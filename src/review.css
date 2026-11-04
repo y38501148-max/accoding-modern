@@ -24,3 +24,16 @@
 .ar-root .ar-review-nav.ar-branches{gap:24px;margin:0 0 20px}
 .ar-root .ar-filter{align-items:stretch}
 .ar-root .ar-similarity-panel .ar-toolbar>button{grid-column:1/-1;justify-self:end;min-width:160px}
+.ar-root .ar-leaderboard-head{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:0 0 18px}
+.ar-root .ar-leaderboard-actions{justify-content:flex-end;margin:0}
+.ar-root .ar-leaderboard-summary{display:flex;gap:12px 24px;flex-wrap:wrap;align-items:center;color:var(--ar-muted)}
+.ar-root .ar-leaderboard>.ar-message:empty{display:none}
+.ar-root .ar-leaderboard-summary strong{color:var(--ar-ink);font-size:20px;font-weight:600}
+.ar-root .ar-leaderboard-table{font-variant-numeric:tabular-nums;white-space:nowrap}
+.ar-root .ar-leaderboard-table td:nth-child(n+5),.ar-root .ar-leaderboard-table th:nth-child(n+5){text-align:right}
+.ar-root .ar-leaderboard-table td:nth-child(5){font-weight:650;color:var(--ar-blue)}
+.ar-root .ar-leaderboard-table td:nth-child(n){min-width:54px;white-space:nowrap}
+.ar-root .ar-leaderboard-table td:nth-child(2){min-width:100px}
+.ar-root .ar-leaderboard-table td:nth-child(3){min-width:100px}
+.ar-root .ar-leaderboard-table td:nth-child(4){min-width:120px}
+@media(max-width:650px){.ar-root .ar-leaderboard-actions{justify-content:flex-start}.ar-root .ar-leaderboard-summary{gap:8px 16px}}

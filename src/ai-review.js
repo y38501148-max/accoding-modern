@@ -34,9 +34,10 @@ function createAiReviewPanel(container,core,getContext,_readMetadata,options={})
   similarityHost.className='ar-similarity-panel';
   similarityHost.setAttribute('role','tabpanel');
   const similarityPanel=createCodeSimilarityPanel(similarityHost,core,client,getContext,()=>scope);
-  let branch='ai';
-  const aiBranch=button('AI 特征复核',()=>chooseBranch('ai')),peerBranch=button('代码查重',()=>chooseBranch('similarity'));
-  for(const b of [aiBranch,peerBranch]){b.setAttribute('role','tab');branches.append(b);}
+  let branch='ai',leaderboardPanel=null;
+  const leaderboardHost=el('section');leaderboardHost.hidden=true;leaderboardHost.className='ar-leaderboard';leaderboardHost.setAttribute('role','tabpanel');leaderboardHost.setAttribute('aria-label','核查榜单');
+  const aiBranch=button('AI 特征复核',()=>chooseBranch('ai')),peerBranch=button('代码查重',()=>chooseBranch('similarity')),leaderboardBranch=button('核查榜单',()=>chooseBranch('leaderboard'));
+  for(const b of [aiBranch,peerBranch,leaderboardBranch]){b.setAttribute('role','tab');b.setAttribute('aria-selected','false');branches.append(b);}
   aiBranch.setAttribute('aria-selected','true');peerBranch.setAttribute('aria-selected','false');peerBranch.setAttribute('aria-controls',similarityHost.id);
   peerBranch.id=similarityHost.id+'-tab';similarityHost.setAttribute('aria-labelledby',peerBranch.id);
   for(const node of [controls,actions,message,progress,list,pager])node.classList.add('ar-branch-content');
@@ -44,20 +45,23 @@ function createAiReviewPanel(container,core,getContext,_readMetadata,options={})
   actions.append(sidInput,button('查看提交',()=>{if(/^[1-9]\d*$/.test(sidInput.value.trim()))void openDetail(sidInput.value.trim());else message.textContent='请输入有效的提交 ID。';}));
   sidInput.hidden=true;actions.lastElementChild.hidden=true;
   if(options.feedbackOnly)container.append(style,detail);
-  else {const header=el('header');header.className='ar-panel-head';header.append(heading,actions);container.append(style,header,...(options.submissionId?[]:[branches]),controls,message,progress,list,pager,detail,similarityHost);}
+  else {const header=el('header');header.className='ar-panel-head';header.append(heading,actions);container.append(style,header,...(options.submissionId?[]:[branches]),controls,message,progress,list,pager,detail,similarityHost,leaderboardHost);}
   if(options.submissionId){controls.hidden=actions.hidden=message.hidden=list.hidden=pager.hidden=true;}
   function chooseBranch(value){
     if(value===branch)return;stop();branch=value;detail.hidden=true;
-    const peer=value==='similarity';aiBranch.setAttribute('aria-selected',String(!peer));peerBranch.setAttribute('aria-selected',String(peer));
-    for(const node of [controls,actions,message,progress,list,pager])node.hidden=peer;
+    const peer=value==='similarity',board=value==='leaderboard';aiBranch.setAttribute('aria-selected',String(value==='ai'));peerBranch.setAttribute('aria-selected',String(peer));leaderboardBranch.setAttribute('aria-selected',String(board));
+    for(const node of [controls,actions,message,progress,list,pager])node.hidden=value!=='ai';
     similarityHost.hidden=!peer;
-    if(peer)void similarityPanel.setActive(active);else{similarityPanel.setActive(false);if(active)void refresh();}
+    leaderboardHost.hidden=!board;
+    if(board&&!leaderboardPanel)leaderboardPanel=createReviewLeaderboardPanel(leaderboardHost,core,client,getContext);
+    leaderboardPanel?.setActive(board&&active);
+    if(peer)void similarityPanel.setActive(active);else{similarityPanel.setActive(false);if(active&&!board)void refresh();}
   }
   function contextKey(){const c=getContext();return `${c.classId||''}:${c.contest?.id||''}:${c.generation}`;}
   function key(){return contextKey()+':v4:'+runId;}
-  function reload(fresh=false){if(fresh)pageCache.clear();return options.submissionId?openDetail(options.submissionId):refresh();}
+  function reload(fresh=false){if(fresh){pageCache.clear();}return options.submissionId?openDetail(options.submissionId):refresh();}
   function stop(){saving=false;detailResize?.disconnect();cursor=null;updateNavigation=()=>{};generation++;controller?.abort();detailVersion++;detailController?.abort();clearTimeout(timer);}
-  function reset(){stop();pageCache.clear();ojSources.clear();similarityPanel.reset();scope=null;listDirty=false;listPosition=null;heading.textContent='代码复核';problem.disabled=false;counts=null;rows=[];runs=[];total=page=0;runId='';refill(runHistory,[['latest','最新完整运行']]);detail.hidden=true;detail.replaceChildren();progress.textContent='';message.textContent='读取比赛后，打开代码复核。';draw();}
+  function reset(){stop();pageCache.clear();ojSources.clear();similarityPanel.reset();leaderboardPanel?.reset();scope=null;listDirty=false;listPosition=null;heading.textContent='代码复核';problem.disabled=false;counts=null;rows=[];runs=[];total=page=0;runId='';refill(runHistory,[['latest','最新完整运行']]);detail.hidden=true;detail.replaceChildren();progress.textContent='';message.textContent='读取比赛后，打开代码复核。';draw();}
   function setProblemScope(next){stop();scope=next?{...next,submissionIds:[...next.submissionIds]}:null;page=0;state.value=(options.problemList||next)?'all':'queue';feature.value='all';problem.value=scope?.problemId||'all';problem.disabled=!!scope;heading.textContent=scope?`本题提交核查 · ${scope.title}`:'代码复核';detail.hidden=true;detail.replaceChildren();}
   function query(c,offset=page*size,limit=size){return {contest_id:Number(c.contest.id),creator_ids:[...core.members(c.summary.rows).keys()],offset,limit,run_id:runId,...(scope?{problem_id:Number(scope.problemId),submission_ids:scope.submissionIds}:problem.value==='all'?{}:{problem_id:Number(problem.value)}),...(feature.value==='all'?{}:{label:feature.value}),...(options.problemList||state.value==='all'||state.value==='reviewed_no_ai'?{}:{review_queue_only:true}),...(state.value==='queue'||state.value==='all'?{}:{review_status:state.value})};}
   function fillRuns(values){const selection=core.selectReviewRun(values,runHistory.value);runs=selection.runs;const next=selection.selected?.run_id||'';if(next!==runId){if(runId)pageCache.clear();page=0;}runId=next;refill(runHistory,[['latest','最新完整运行'],...runs.map(run=>[run.run_id,`${run.publication_ready===false?'待同步 · ':'历史运行 · '}${run.run_id}`])],selection.explicit?runId:'latest');}
@@ -333,5 +337,5 @@ function createAiReviewPanel(container,core,getContext,_readMetadata,options={})
       finally{loading=false;}
     });
   }
-  return {reset,openDetail,setProblemScope,setActive(value){active=value;if(branch==='similarity'){stop();return similarityPanel.setActive(value);}similarityPanel.setActive(false);if(value)return refresh();stop();}};
+  return {reset,openDetail,setProblemScope,setActive(value){if(active===value&&value&&branch==='leaderboard')return;active=value;leaderboardPanel?.setActive(false);if(branch==='leaderboard'){stop();return leaderboardPanel?.setActive(value);}if(branch==='similarity'){stop();return similarityPanel.setActive(value);}similarityPanel.setActive(false);if(value)return refresh();stop();}};
 }

@@ -8,7 +8,7 @@ function teachingGroups(doc){
   });
 }
 function createTeachingClient() {
-  const key='accoding-modern.teaching.connection.v1',cacheName='accoding-modern.teaching.responses.v1';
+  const key='accoding-modern.teaching.connection.v1',cacheName='accoding-modern.teaching.responses.v2';
   const saved=JSON.parse((typeof GM_getValue==='function'?GM_getValue(key,''):localStorage.getItem(key))||'{}');
   let connection={url:saved.url},revision=0;
   const pending=new Map(),memory=new Map();

@@ -5,6 +5,8 @@ import {homedir} from 'node:os';
 const root=new URL('../',import.meta.url),port=Number(process.env.OJ_PEEKER_PREVIEW_PORT||18765);
 const agentRoot=process.env.OJ_AGENT_ROOT||homedir()+'/.config/oj-review/agent';
 const agent=process.env.OJ_AGENT_URL||'http://127.0.0.1:18798';
+const teaching=process.env.OJ_TEACHING_PREVIEW_URL||agent;
+const review=process.env.OJ_REVIEW_PREVIEW_URL||'https://muzermat.online:8443/oj-review-api/v4';
 const server=createServer(async(req,res)=>{
   const url=new URL(req.url,'http://127.0.0.1:'+port);
   try{
@@ -15,8 +17,9 @@ const server=createServer(async(req,res)=>{
       res.writeHead(302,{Location:link.url});res.end();return;
     }
     if(url.pathname.startsWith('/review-api/')){
-      const headers={'User-Agent':'Mozilla/5.0'};for(const name of ['content-type','authorization','x-review-state-protocol'])if(req.headers[name])headers[name]=req.headers[name];
-      const response=await fetch('https://muzermat.online:8443/oj-review-api/v4/'+url.pathname.slice('/review-api/'.length)+url.search,{method:req.method,headers,body:['GET','HEAD'].includes(req.method)?undefined:req,duplex:'half'});
+      const headers={'User-Agent':'Mozilla/5.0'};for(const name of ['content-type','authorization','x-review-state-protocol','x-oj-review-capabilities'])if(req.headers[name])headers[name]=req.headers[name];
+      const base=url.pathname.startsWith('/review-api/leaderboard')?review:'https://muzermat.online:8443/oj-review-api/v4';
+      const response=await fetch(base+'/'+url.pathname.slice('/review-api/'.length)+url.search,{method:req.method,headers,body:['GET','HEAD'].includes(req.method)?undefined:req,duplex:'half'});
       res.writeHead(response.status,{'Content-Type':response.headers.get('content-type')||'application/json'});res.end(Buffer.from(await response.arrayBuffer()));return;
     }
     if(/^\/submission\/\d+$/.test(url.pathname)){res.writeHead(302,{Location:'https://accoding.buaa.edu.cn:4000'+url.pathname});res.end();return;}
@@ -33,7 +36,8 @@ const server=createServer(async(req,res)=>{
       res.writeHead(response.status,{'Content-Type':response.headers.get('content-type')||'text/html'});res.end(Buffer.from(await response.arrayBuffer()));return;
     }
     if(url.pathname.startsWith('/teaching/')){
-      const response=await fetch(agent+url.pathname+url.search,{method:req.method,headers:{...req.headers,host:'127.0.0.1:18798',origin:agent,'accept-encoding':'identity'},body:['GET','HEAD'].includes(req.method)?undefined:req,duplex:'half'});
+      const target=teaching+url.pathname+url.search;
+      const response=await fetch(target,{method:req.method,headers:{...req.headers,host:new URL(target).host,origin:new URL(target).origin,'accept-encoding':'identity'},body:['GET','HEAD'].includes(req.method)?undefined:req,duplex:'half'});
       res.writeHead(response.status,Object.fromEntries(response.headers));res.end(Buffer.from(await response.arrayBuffer()));return;
     }
     if(url.pathname==='/preview.user.js'){

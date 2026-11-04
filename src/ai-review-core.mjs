@@ -276,6 +276,20 @@ export function createAiReviewCore() {
     return {
       referenceSource,
       peerSource,
+      async leaderboard(query,signal){
+        const value=await request('/leaderboard',query,signal),ids=query.contests.map(c=>String(c.id)),membersById=new Map(query.members.map(m=>[m.userId,m]));
+        const count=n=>Number.isInteger(n)&&n>=0;
+        if(!value||value.total!==query.members.length||value.offset!==query.offset||value.limit!==10||!count(value.aiTotal)||!Array.isArray(value.rows)||value.rows.length!==Math.max(0,Math.min(10,value.total-query.offset))||!Array.isArray(value.contests)||JSON.stringify(value.contests.map(c=>c.id))!==JSON.stringify(ids)||!Array.isArray(value.packets)||value.packets.length!==ids.length||value.packets.some((p,i)=>p.contestId!==ids[i]||!(p.runId===null||typeof p.runId==='string'&&p.runId))||!hash(value.revision))throw Error('核查榜单格式无效');
+        if(value.rows.some(r=>!membersById.has(r.userId)||r.studentId!==membersById.get(r.userId).studentId||!count(r.aiTotal)||!count(r.hitTotal)||!Array.isArray(r.history)||r.history.length!==ids.length||r.history.some((h,i)=>h.contestId!==ids[i]||!(h.ai===null&&h.hits===null||count(h.ai)&&count(h.hits)))))throw Error('核查榜单与当前班级或比赛不一致');
+        return value;
+      },
+      async exportLeaderboard(query,signal){
+        const response=await fetcher(apiV4+'/leaderboard/export',{method:'POST',headers:{'Content-Type':'application/json','X-Review-State-Protocol':'2','X-OJ-Review-Capabilities':'indentation-style-v1'},credentials:'omit',cache:'no-store',signal,body:JSON.stringify(query)});
+        if(!response.ok)await readServiceJson(response);
+        const blob=await response.blob(),bytes=new Uint8Array(await blob.slice(0,4).arrayBuffer());
+        if(bytes[0]!==80||bytes[1]!==75||bytes[2]!==3||bytes[3]!==4)throw Error('服务端未返回有效的 XLSX 文件');
+        return blob;
+      },
       async openList(query,preferred,signal){
         const packet=await request('/reviews/search',{...query,run_id:preferred,resolve_run:true,include_candidates:true,include_all:true},signal);
         if(!Array.isArray(packet.runs)||packet.runs.some(run=>typeof run.run_id!=='string'||run.contest_id!==query.contest_id||!hash(run.configuration_sha256)||(Object.hasOwn(run,'publication_ready')&&typeof run.publication_ready!=='boolean')))throw new Error('运行清单格式或比赛不一致');
