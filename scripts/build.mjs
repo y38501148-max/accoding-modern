@@ -18,7 +18,9 @@ const mathJax=await readFile(new URL('vendor/mathjax2/mathjax-svg.js',root),'utf
 const activationCore=(await readFile(new URL('src/upsolve-activation-core.mjs',root),'utf8')).replace(/^export /gm,'');
 const activation=await readFile(new URL('src/upsolve-activation.js',root),'utf8');
 const statementCore=(await readFile(new URL('src/statement-core.mjs',root),'utf8')).replace(/^export /gm,'');
-const statementCss=await readFile(new URL('src/statement.css',root),'utf8');
+const zipCore=(await readFile(new URL('src/zip-core.mjs',root),'utf8')).replace(/^export /gm,'');
+const statementTex=(await readFile(new URL('src/statement-tex.mjs',root),'utf8')).replace(/^import .*;\r?\n/gm,'').replace(/^export /gm,'');
+const oicontestClass=await readFile(new URL('src/oicontest.cls',root),'utf8');
 const statementExport=await readFile(new URL('src/statement-export.js',root),'utf8');
 const markdownCore=(await readFile(new URL('src/markdown-core.mjs',root),'utf8')).replace(/^export /gm,'');
 const markdownEditor=await readFile(new URL('src/markdown-editor.js',root),'utf8');
@@ -28,7 +30,7 @@ const backNavigation=await readFile(new URL('src/back-navigation.js',root),'utf8
 const testdataCore=(await readFile(new URL('src/testdata-core.mjs',root),'utf8')).replace(/^export /gm,'');
 const testdataGuard=await readFile(new URL('src/testdata-guard.js',root),'utf8');
 const classCore=(await readFile(new URL('src/class-core.mjs',root),'utf8')).replace(/^export /gm,'');
-const classXlsx=(await readFile(new URL('src/class-xlsx.mjs',root),'utf8')).replace(/^export /gm,'');
+const classXlsx=(await readFile(new URL('src/class-xlsx.mjs',root),'utf8')).replace(/^import .*;\r?\n/gm,'').replace(/^export /gm,'');
 const classXlsReader=(await readFile(new URL('vendor/sheetjs/reader.mjs',root),'utf8')).replace(/^export /gm,'');
 const classWorkbook=(await readFile(new URL('src/class-workbook.mjs',root),'utf8')).replace(/^import .*;\r?\n/gm,'').replace(/^export /gm,'');
 const classManager=await readFile(new URL('src/class-manager.js',root),'utf8');
@@ -54,7 +56,7 @@ const header=`// ==UserScript==
 // @name         Accoding Modern · 北航 OJ 管理界面
 // @namespace    local.accoding.modern
 // @version      ${version}
-// @description  界面美化、教学工作台、按题筛选通过提交、页内代码复核、独立补题排行榜与提交查看、赛事统计看板、Markdown 兼容编辑与批量测试点选择，保留原站登录和操作。
+// @description  界面美化、教学工作台、按题筛选通过提交、页内代码复核、独立补题排行榜与提交查看、赛事统计看板、Markdown 兼容编辑、Statement LaTeX 工程导出与批量测试点选择，保留原站登录和操作。
 // @include      https://accoding.buaa.edu.cn:4000/*
 // @include      https://accoding-4000.e1.buaa.edu.cn/*
 // @include      https://accoding-4000.e2.buaa.edu.cn/*
@@ -77,7 +79,7 @@ const header=`// ==UserScript==
 const preview=process.argv.includes('--preview');
 const output=preview?'preview/accoding-modern.preview.user.js':'accoding-modern.user.js';
 const scriptHeader=preview?header.replace('Accoding Modern · 北航 OJ 管理界面','Accoding Modern · Peeker 本地预览').replace(/^\/\/ @(downloadURL|updateURL).*\n/gm,''):header;
-await writeFile(new URL(output,root),scriptHeader+`(() => {\n'use strict';\nconst ACCODING_MODERN_VERSION=${JSON.stringify(version)};\n${runtime}\nif (!ACCODING_MODERN_IS_APP) return;\nconst pageWindow=typeof unsafeWindow==='undefined'?window:unsafeWindow;\n${mathRepair}\nconst ACCODING_MATHJAX_SOURCE=${JSON.stringify(mathJax)};\nconst accodingMath=createMathRepair(ACCODING_MATHJAX_SOURCE);\n${reviewTransport}\n${core}\n${ui}\nmountContestBoard(createContestCore());\n${activationCore}\n${activation}\nmountUpsolveActivation(createContestCore());\nconst ACCODING_STATEMENT_CSS=${JSON.stringify(statementCss)};\n${statementCore}\n${statementExport}\nmountStatementExport(createContestCore());\n${interfacePreference}\nconst interfacePreference=createInterfacePreference({getShared:typeof GM_getValue==='function'?GM_getValue:undefined,setShared:typeof GM_setValue==='function'?GM_setValue:undefined});\nconst ACCODING_WORKSPACE_CSS=${JSON.stringify(workspaceCss)};\nconst ACCODING_REVIEW_CSS=${JSON.stringify(reviewCss)};\n${workspace}\n${contestTheme}\n${listFilterCore}\n${listFilter}\n${theme}\n${markdownCore}\n${markdownEditor}\nmountMarkdownEditor(createMarkdownCore());\n${batchCore}\n${batchUpload}\nmountBatchUpload(createBatchCore());\n${backNavigation}\nmountBackNavigation();\n${testdataCore}\n${testdataGuard}\nmountTestdataGuard(createTestdataCore());\n${classCore}\n${classXlsReader}\n${classXlsx}\n${classWorkbook}\n${reviewCore}\n${reviewXlsx}\n${reviewAccess}\n${similarityUi}\n${leaderboardCore}\n${leaderboardUi}\n${reviewUi}\n${teachingContest}\n${teachingExport}\n${teachingClient}\nconst ACCODING_TEACHING_CSS=${JSON.stringify(teachingCss)};\n${classManager}\n${upsolveCore}\n${upsolveReader}\n${submissionCore}\n${submissionReview}\nmountClassManager(createClassCore(),createContestCore(),createUpsolveCore(),createUpsolveReader(createContestCore().time),createAiReviewCore());\nmountSubmissionReview(createAiReviewCore());\n${updateCore}\n${updateNotice}\nmountUpdateNotice(ACCODING_MODERN_VERSION);\nmountWorkspace();\n})();\n`);
+await writeFile(new URL(output,root),scriptHeader+`(() => {\n'use strict';\nconst ACCODING_MODERN_VERSION=${JSON.stringify(version)};\n${runtime}\nif (!ACCODING_MODERN_IS_APP) return;\nconst pageWindow=typeof unsafeWindow==='undefined'?window:unsafeWindow;\n${mathRepair}\nconst ACCODING_MATHJAX_SOURCE=${JSON.stringify(mathJax)};\nconst accodingMath=createMathRepair(ACCODING_MATHJAX_SOURCE);\n${reviewTransport}\n${core}\n${ui}\nmountContestBoard(createContestCore());\n${activationCore}\n${activation}\nmountUpsolveActivation(createContestCore());\nconst ACCODING_OICONTEST_CLASS=${JSON.stringify(oicontestClass)};\n${zipCore}\n${statementCore}\n${statementTex}\n${statementExport}\nmountStatementExport(createContestCore());\n${interfacePreference}\nconst interfacePreference=createInterfacePreference({getShared:typeof GM_getValue==='function'?GM_getValue:undefined,setShared:typeof GM_setValue==='function'?GM_setValue:undefined});\nconst ACCODING_WORKSPACE_CSS=${JSON.stringify(workspaceCss)};\nconst ACCODING_REVIEW_CSS=${JSON.stringify(reviewCss)};\n${workspace}\n${contestTheme}\n${listFilterCore}\n${listFilter}\n${theme}\n${markdownCore}\n${markdownEditor}\nmountMarkdownEditor(createMarkdownCore());\n${batchCore}\n${batchUpload}\nmountBatchUpload(createBatchCore());\n${backNavigation}\nmountBackNavigation();\n${testdataCore}\n${testdataGuard}\nmountTestdataGuard(createTestdataCore());\n${classCore}\n${classXlsReader}\n${classXlsx}\n${classWorkbook}\n${reviewCore}\n${reviewXlsx}\n${reviewAccess}\n${similarityUi}\n${leaderboardCore}\n${leaderboardUi}\n${reviewUi}\n${teachingContest}\n${teachingExport}\n${teachingClient}\nconst ACCODING_TEACHING_CSS=${JSON.stringify(teachingCss)};\n${classManager}\n${upsolveCore}\n${upsolveReader}\n${submissionCore}\n${submissionReview}\nmountClassManager(createClassCore(),createContestCore(),createUpsolveCore(),createUpsolveReader(createContestCore().time),createAiReviewCore());\nmountSubmissionReview(createAiReviewCore());\n${updateCore}\n${updateNotice}\nmountUpdateNotice(ACCODING_MODERN_VERSION);\nmountWorkspace();\n})();\n`);
 
 if(!preview)await writeFile(new URL('accoding-modern.meta.js',root),header.slice(0,header.indexOf('// Generated')));
 if(!preview)await writeFile(new URL('version.json',root),JSON.stringify({version},null,2)+'\n');

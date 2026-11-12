@@ -12,32 +12,6 @@ function statementDateRange(start, end) {
     : `${first} — ${to.year} 年 ${to.month} 月 ${to.day} 日`;
 }
 
-function cssString(value) {
-  return '"' + String(value)
-    .replace(/\\/g, '\\\\')
-    .replace(/"/g, '\\"')
-    .replace(/[\n\r\f]+/g, ' ') + '"';
-}
-
-const statementPageFont = '"Times New Roman","SimSun","Songti SC","Noto Serif CJK SC",serif';
-
-export function statementCoverTable(statement) {
-  return {
-    columns: ['题号', '题目名称', '时间限制', '空间限制'],
-    rows: statement.problems.map(problem => [problem.label, problem.title, problem.timeLimitText, problem.memoryLimitText])
-  };
-}
-
-export function statementPageRules(statement) {
-  const header = `width:50%;vertical-align:top;padding-top:41pt;font-family:${statementPageFont};font-size:10pt;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis`;
-  const footer = `font-family:${statementPageFont};font-size:10pt;line-height:1.2;color:#000;vertical-align:middle`;
-  return [
-    `@page{size:A4;margin:25mm;@top-left{content:${cssString(statement.contestTitle)};${header}}@top-right{content:"";${header};text-align:right}@top-center{content:"";width:100%;margin-top:54pt;border-top:0.2pt solid #000}@bottom-center{content:"第 " counter(page) " 页\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0共 " counter(pages) " 页";${footer}}}`,
-    '@page cover{@top-left{content:none}@top-right{content:none}@top-center{content:none;border-top:none}@bottom-center{content:none}}',
-    ...statement.problems.map((problem, index) => `@page p${index}{@top-right{content:${cssString(problem.heading)};}}`)
-  ].join('\n');
-}
-
 export function createStatementCore(Core) {
   function compile(value, id) {
     const raw=Core.decode(value),contest=Core.normalizeContest(raw);

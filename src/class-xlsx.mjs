@@ -1,3 +1,5 @@
+import {createStoredZip} from './zip-core.mjs';
+
 // Local OOXML reader: shared strings, inline strings, cached formula values, multiple sheets.
 // No workbook bytes leave the browser. ZIP limits also bound decompression memory.
 export async function readClassXlsx(file) {
@@ -126,46 +128,6 @@ function scoreSheetXml(matrix) {
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="${ref}"/><sheetData>${body}</sheetData></worksheet>`;
 }
 
-function crc32(bytes) {
-  let crc = 0xffffffff;
-  for (const byte of bytes) {
-    crc ^= byte;
-    for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
-  }
-  return (crc ^ 0xffffffff) >>> 0;
-}
-
-function u16(value) {
-  return Uint8Array.of(value & 255, (value >>> 8) & 255);
-}
-
-function u32(value) {
-  return Uint8Array.of(value & 255, (value >>> 8) & 255, (value >>> 16) & 255, (value >>> 24) & 255);
-}
-
-function joinBytes(parts) {
-  const result = new Uint8Array(parts.reduce((size, part) => size + part.length, 0));
-  let offset = 0;
-  for (const part of parts) { result.set(part, offset); offset += part.length; }
-  return result;
-}
-
-function zipStore(files) {
-  const encoder = new TextEncoder(), localParts = [], centralParts = [];
-  let offset = 0;
-  for (const file of files) {
-    const name = encoder.encode(file.name), data = typeof file.data === 'string' ? encoder.encode(file.data) : file.data;
-    const checksum = crc32(data), size = data.length;
-    const local = joinBytes([u32(0x04034b50), u16(20), u16(0x800), u16(0), u16(0), u16(33), u32(checksum), u32(size), u32(size), u16(name.length), u16(0), name, data]);
-    localParts.push(local);
-    const central = joinBytes([u32(0x02014b50), u16(20), u16(20), u16(0x800), u16(0), u16(0), u16(33), u32(checksum), u32(size), u32(size), u16(name.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(offset), name]);
-    centralParts.push(central);
-    offset += local.length;
-  }
-  const central = joinBytes(centralParts), locals = joinBytes(localParts);
-  return joinBytes([locals, central, u32(0x06054b50), u16(0), u16(0), u16(files.length), u16(files.length), u32(central.length), u32(locals.length), u16(0)]);
-}
-
 /** Create a minimal, dependency-free XLSX workbook as ZIP bytes. */
 export function createClassScoreXlsx(matrix) {
   const sheet = scoreSheetXml(matrix);
@@ -173,7 +135,7 @@ export function createClassScoreXlsx(matrix) {
   const rootRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`;
   const workbook = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="比赛成绩" sheetId="1" r:id="rId1"/></sheets></workbook>`;
   const workbookRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>`;
-  return zipStore([
+  return createStoredZip([
     {name: '[Content_Types].xml', data: contentTypes},
     {name: '_rels/.rels', data: rootRels},
     {name: 'xl/workbook.xml', data: workbook},
@@ -214,7 +176,7 @@ export function createTextXlsx(sheets) {
     return {name: `xl/worksheets/sheet${index + 1}.xml`, data: `${declaration}<worksheet xmlns="${main}"><dimension ref="A1:${end}"/><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>${columns}</cols><sheetData>${data}</sheetData><autoFilter ref="A1:${end}"/></worksheet>`};
   });
   const styles = `${declaration}<styleSheet xmlns="${main}"><fonts count="2"><font><sz val="11"/></font><font><b/><color rgb="FFFFFFFF"/><sz val="11"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF254766"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment vertical="center"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="center"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
-  return zipStore([
+  return createStoredZip([
     {name: '[Content_Types].xml', data: `${declaration}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${sheets.map((_, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>`},
     {name: '_rels/.rels', data: `${declaration}<Relationships xmlns="${pkg}"><Relationship Id="rId1" Type="${rel}/officeDocument" Target="xl/workbook.xml"/></Relationships>`},
     {name: 'xl/workbook.xml', data: `${declaration}<workbook xmlns="${main}" xmlns:r="${rel}"><sheets>${sheets.map((sheet, i) => `<sheet name="${xmlEscape(sheet.name)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join('')}</sheets></workbook>`},

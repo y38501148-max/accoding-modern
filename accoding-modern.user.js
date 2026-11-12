@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Accoding Modern · 北航 OJ 管理界面
 // @namespace    local.accoding.modern
-// @version      1.25.3
-// @description  界面美化、教学工作台、按题筛选通过提交、页内代码复核、独立补题排行榜与提交查看、赛事统计看板、Markdown 兼容编辑与批量测试点选择，保留原站登录和操作。
+// @version      1.26.0
+// @description  界面美化、教学工作台、按题筛选通过提交、页内代码复核、独立补题排行榜与提交查看、赛事统计看板、Markdown 兼容编辑、Statement LaTeX 工程导出与批量测试点选择，保留原站登录和操作。
 // @include      https://accoding.buaa.edu.cn:4000/*
 // @include      https://accoding-4000.e1.buaa.edu.cn/*
 // @include      https://accoding-4000.e2.buaa.edu.cn/*
@@ -23,7 +23,7 @@
 
 (() => {
 'use strict';
-const ACCODING_MODERN_VERSION="1.25.3";
+const ACCODING_MODERN_VERSION="1.26.0";
 // Runtime URL compatibility for the direct site and BUAA VPN reverse proxy.
 // The VPN keeps the upstream app under /https-4000/<opaque-token>/, so absolute
 // root requests and pathname checks must be evaluated relative to that prefix.
@@ -690,7 +690,56 @@ function mountUpsolveActivation(Core) {
 }
 
 mountUpsolveActivation(createContestCore());
-const ACCODING_STATEMENT_CSS="/* Statement PDF styling, adapted from the oicontest LaTeX class. */\n*{box-sizing:border-box}\n:root{\n  --statement-serif:\"Latin Modern Roman\",\"Times New Roman\",\"SimSun\",\"Songti SC\",\"Noto Serif CJK SC\",serif;\n  --statement-sans:\"Times New Roman\",\"SimHei\",\"Heiti SC\",\"Noto Sans CJK SC\",sans-serif;\n  --statement-mono:Consolas,\"SFMono-Regular\",Menlo,\"Noto Sans Mono CJK SC\",monospace;\n  --statement-blue:#0000ff;\n}\nhtml,body{margin:0;padding:0}\nbody{background:#eef1f5;color:#000;font-family:var(--statement-serif);font-size:12pt;line-height:1.565;text-align:justify;font-synthesis:none}\n.toolbar{position:sticky;top:0;z-index:2;padding:14px 20px;background:#edf3ff;border-bottom:1px solid #ccd7e6;font:14px/1.6 sans-serif}\n.toolbar button{font:inherit;padding:7px 14px;margin-right:12px;cursor:pointer}\n.toolbar [role=status]{white-space:pre-wrap}\nmain{width:210mm;max-width:calc(100vw - 32px);min-height:297mm;margin:24px auto;padding:25mm;background:#fff;box-shadow:0 4px 18px #1834531a}\n.cover{padding-top:8pt;padding-bottom:24px;margin-bottom:24px;border-bottom:1px solid #d8dee8;page:cover;break-after:page;page-break-after:always}\n.cover-title{margin:0;text-align:center;font-family:var(--statement-sans);font-size:24.88pt;font-weight:700;line-height:1.35;overflow-wrap:anywhere}\n.cover-date{margin:24pt 0 0;text-align:center;font-family:var(--statement-sans);font-size:14.4pt;line-height:1.4}\n.cover-table{width:100%;margin:22pt auto 0;border-collapse:collapse;table-layout:fixed;font-size:10pt;line-height:1.45;break-inside:auto;page-break-inside:auto}\n.cover-table thead{display:table-header-group}\n.cover-table th,.cover-table td{padding:3pt 6pt;border:0.4pt solid #000;text-align:center;vertical-align:middle;font-weight:400;overflow-wrap:anywhere}\n.cover-table tbody td:nth-child(2){text-align:left}\n.cover-table th:nth-child(1),.cover-table td:nth-child(1){width:10%}\n.cover-table th:nth-child(2),.cover-table td:nth-child(2){width:46%}\n.cover-table th:nth-child(3),.cover-table td:nth-child(3){width:22%}\n.cover-table th:nth-child(4),.cover-table td:nth-child(4){width:22%}\n.problem{padding-top:16px;margin-top:24px;border-top:1px solid #d8dee8;break-before:page;page-break-before:always}\n.problem-title{margin:10pt 0 14pt;text-align:center;font-family:var(--statement-sans);font-size:17.28pt;font-weight:400;line-height:1.3;overflow-wrap:anywhere;break-after:avoid;page-break-after:avoid}\n.markdown-body{font-family:var(--statement-serif);font-size:12pt;line-height:1.565;text-align:justify}\n.markdown-body p{margin:0;text-indent:2em;orphans:2;widows:2;overflow-wrap:anywhere}\n.markdown-body p:has(>img:only-child),.markdown-body p:has(>a>img:only-child){text-indent:0;text-align:center}\n.markdown-body h1,.markdown-body h2{margin:10pt 0 8pt;text-align:left;font-family:var(--statement-sans);font-size:13pt;font-weight:700;line-height:1.3;break-after:avoid;page-break-after:avoid}\n.markdown-body h1.oic-brackets::before,.markdown-body h2.oic-brackets::before{content:\"【\"}\n.markdown-body h1.oic-brackets::after,.markdown-body h2.oic-brackets::after{content:\"】\"}\n.markdown-body h3,.markdown-body h4,.markdown-body h5,.markdown-body h6{margin:8pt 0 4pt;text-align:left;font-family:var(--statement-sans);font-size:12pt;font-weight:700;line-height:1.35;break-after:avoid;page-break-after:avoid}\n.markdown-body strong,.markdown-body b{font-family:var(--statement-sans);font-weight:700}\n.cjk-emphasis{text-emphasis:dot;text-emphasis-position:under right;-webkit-text-emphasis:dot;-webkit-text-emphasis-position:under right;text-emphasis-color:#000}\n.markdown-body ul,.markdown-body ol{margin:0;padding-left:3em}\n.markdown-body li{margin:0;padding:0}\n.markdown-body li>p,.markdown-body blockquote p,.markdown-body td p,.markdown-body th p{text-indent:0}\n.markdown-body blockquote{margin:0 0 0 2em;padding:0;border:0;color:inherit}\n.markdown-body hr{margin:10pt 0;border:0;border-top:0.4pt solid #000}\n.markdown-body a{color:var(--statement-blue);text-decoration:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}\n.markdown-body img{max-width:100%;height:auto;break-inside:avoid;page-break-inside:avoid}\n.markdown-body figure{margin:10pt 0;text-align:center;break-inside:avoid;page-break-inside:avoid}\n.markdown-body :not(pre)>code,.markdown-body kbd{padding:0;border:0;background:none;color:inherit;font-family:var(--statement-mono);font-size:0.92em;line-height:1.4;overflow-wrap:anywhere}\n.markdown-body pre{margin:3pt 0 3pt 14pt;padding:4pt 8pt 4pt 4pt;border:0.6pt solid var(--statement-blue);background:#fff;color:#000;font-family:var(--statement-mono);font-size:10.5pt;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;tab-size:4;break-inside:avoid;page-break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}\n.markdown-body pre code{display:block;padding-left:0;background:none;color:inherit;font:inherit;white-space:inherit}\n.markdown-body .code-line{position:relative;display:block;min-height:1.5em;white-space:pre-wrap;overflow-wrap:anywhere}\n.markdown-body .code-line::before{position:absolute;left:-18pt;width:12pt;text-align:right;color:#808080;content:attr(data-line);font-family:var(--statement-mono);font-size:9pt;line-height:1.5}\n.markdown-body table{width:auto;max-width:100%;margin:12pt auto;border-collapse:collapse;border-top:2pt solid #000;border-bottom:2pt solid #000;font-size:10.5pt;line-height:1.45;break-inside:auto;page-break-inside:auto}\n.markdown-body thead{display:table-header-group}\n.markdown-body th,.markdown-body td{padding:3pt 8pt;border:0;border-left:0.4pt solid #000;text-align:center;vertical-align:middle;font-weight:400;overflow-wrap:anywhere}\n.markdown-body th:first-child,.markdown-body td:first-child{border-left:0}\n.markdown-body thead th{border-bottom:1.2pt solid #000}\n.markdown-body tbody tr+tr>th,.markdown-body tbody tr+tr>td{border-top:0.4pt solid #000}\n.markdown-body table.compact{font-size:9pt;line-height:1.35}\n.markdown-body table.compact th,.markdown-body table.compact td{padding:2pt 5pt}\n.markdown-body .MathJax_SVG_Display{margin:0.6em 0;text-align:center;overflow:visible!important}\n.markdown-body svg{max-width:100%}\n#MathJax_Message{display:none!important}\n@media screen and (max-width:900px){main{padding:10mm}}\n@media print{\n  body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}\n  main{width:auto;max-width:none;min-height:0;margin:0;padding:0;background:#fff;box-shadow:none}\n  .toolbar{display:none!important}\n  .cover{margin:0;padding-bottom:0;border:0}\n  .problem{margin:0;padding:0;border:0}\n  a{text-decoration:none}\n}\n";
+const ACCODING_OICONTEST_CLASS="% oicontest.cls\n% Adapted from the oicontest class used by Accoding Modern's statement export.\n% The original template targets SimSun/SimHei/Consolas; this copy falls back to\n% TeX Live's Fandol fonts (and platform Songti/Heiti fonts) when they are absent.\n% No proprietary font files are distributed with this class.\n\\NeedsTeXFormat{LaTeX2e}\n\\ProvidesClass{oicontest}[A LaTeX document class for OI contest statement.]\n\n% inherits from ctexart\n\\LoadClass[a4paper,12pt]{ctexart}\n\n% requirements\n\\RequirePackage{xeCJK,xeCJKfntef}\n\\RequirePackage{etoolbox}\n\\RequirePackage{geometry}\n\\RequirePackage{titling}\n\\RequirePackage{titlesec}\n\\RequirePackage{amsmath}\n\\RequirePackage{amssymb}\n\\RequirePackage{amsfonts}\n\\RequirePackage{tabularx}\n\\RequirePackage{makecell}\n\\RequirePackage{graphicx}\n\\RequirePackage{hyperref}\n\\RequirePackage{lineno}\n\\RequirePackage{minted}\n\\RequirePackage{tikz}\n\\RequirePackage{xcolor}\n\\RequirePackage{tcolorbox}\n\\RequirePackage{fancyhdr}\n\\RequirePackage{fancyvrb}\n\\RequirePackage{lastpage}\n\\RequirePackage{verbatim}\n\\RequirePackage{enumitem}\n\\RequirePackage{tabularray}\n\n% geometric settings\n\\geometry{a4paper,left=2.5cm,right=2.5cm,top=2.5cm,bottom=2.5cm}\n\\renewcommand{\\baselinestretch}{1.3}\n\n% pagestyle settings\n\\pagestyle{fancy}\n\\setlength{\\headheight}{20pt}\n\\renewcommand{\\headrulewidth}{0.2pt}\n\\renewcommand{\\footrulewidth}{0pt}\n\\fancyhead[L]{%\n\t\\footnotesize\\@title%\n\t\\expandafter\\ifstrempty\\expandafter{\\@subtitle}{}{\\hspace{1em}\\@subtitle}\n}\n\\fancyhead[R]{%\n\t\\footnotesize\\nouppercase\\rightmark\n}\n\\fancyfoot[C]{%\n\t\\footnotesize 第 \\thepage 页 ~~~~ 共 { \\pageref{LastPage}} 页\n}\n\n% font settings: prefer the original Windows fonts, fall back to open fonts.\n\\IfFontExistsTF{Consolas}{\\setmonofont{Consolas}}{%\n\t\\IfFontExistsTF{Menlo}{\\setmonofont{Menlo}}{\\setmonofont{Latin Modern Mono}}}\n\\IfFontExistsTF{SimSun}{%\n\t\\IfFontExistsTF{SimHei}{\\setCJKmainfont{SimSun}[BoldFont=SimHei]}{\\setCJKmainfont{SimSun}}%\n}{%\n\t\\IfFontExistsTF{Songti SC}{%\n\t\t\\IfFontExistsTF{Heiti SC}{\\setCJKmainfont{Songti SC}[BoldFont=Heiti SC]}{\\setCJKmainfont{Songti SC}}%\n\t}{%\n\t\t\\IfFontExistsTF{FandolSong-Regular.otf}{%\n\t\t\t\\setCJKmainfont{FandolSong-Regular.otf}[BoldFont=FandolHei-Regular.otf]%\n\t\t}{\\setCJKmainfont{Noto Serif CJK SC}[BoldFont=Noto Sans CJK SC]}%\n\t}%\n}\n\\IfFontExistsTF{SimHei}{\\setCJKmonofont{SimHei}}{%\n\t\\IfFontExistsTF{FandolHei-Regular.otf}{\\setCJKmonofont{FandolHei-Regular.otf}}{%\n\t\t\\setCJKmonofont{Noto Sans Mono CJK SC}}}\n\n% list settings\n\\setlist[itemize,enumerate]{\n\titemsep=0pt,\n\tparsep=0pt,\n\tpartopsep=0pt,\n\ttopsep=0pt,\n\tleftmargin=3em\n}\n% \\setenumerate[1]{itemsep=0pt,partopsep=0pt,parsep=0pt,topsep=0pt,leftmargin=3em}\n% \\setitemize[1]{itemsep=0pt,partopsep=0pt,parsep=0pt,topsep=0pt,leftmargin=3em}\n% \\setdescription{itemsep=0pt,partopsep=0pt,parsep=0pt,topsep=0pt,leftmargin=3em}\n\n% section settings\n\\renewcommand{\\sectionmark}[1]{\\markright{#1}}\n\\renewcommand{\\subsectionmark}[1]{}\n\\renewcommand{\\subsubsectionmark}[1]{}\n\n\\newcommand{\\oic@addbracket}[1]{【#1】}\n\\titleformat{\\section}{\\Large\\heiti}{}{0pt}{%\n\t\\centering\\label{sec:\\thesection}\n}\n\\titleformat{\\subsection}{\\bf}{}{1em}{%\n\t\\bf\\fontsize{13bp}{13bp*\\real{\\baselinestretch}}\\oic@addbracket\n}\n\\titleformat{\\subsubsection}{\\bf}{}{1em}{}\n\n% hyperref settings\n\\hypersetup{\n\tsetpagesize=false,\n\tcolorlinks=true,\n\tlinkcolor=blue,\n\tbreaklinks=true,\n\tpdfborder={0 0 0}\n}\n\n% code blocks settings\n\\renewcommand{\\theFancyVerbLine}{\\ttfamily\\footnotesize\\color{gray}\\arabic{FancyVerbLine}}\n\\setminted{\n\tstyle=xcode,\n\tframe=single,\n\trulecolor=\\color{blue},\n\tlinenos=true,\n\tnumbersep=6.5pt,\n\ttabsize=4,\n\tbreaklines,\n\tbreakanywhere,\n\txleftmargin=8.5pt,\n\txrightmargin=-3.5pt\n}\n\n% text formats\n\\renewcommand{\\textbf}[1]{{\\bfseries\\CJKunderdot{#1}}}\n\\newcommand{\\oicfilename}[1]{\\textbf{\\textit{#1}}}\n\\newcommand{\\oicstring}[1]{\\texttt{\\uline{#1}}}\n\n% problemset operations\n\\newcounter{oic@probnum}\n\\newcommand{\\oic@probindexlist}{}\n\n% \\addproblem{中文名}{英文名}{类型}{时间}{空间}{测试点数}{是否等分}\n\\newcommand{\\addproblem}[7]{\\begingroup%\n\t\\stepcounter{oic@probnum}\n\t\\listxadd{\\oic@probindexlist}{\\alph{oic@probnum}}\n\t\\def\\@deffield##1##2{\n\t\t\\expandafter\\gdef\\csname oic@prob@\\alph{oic@probnum}@##1\\endcsname{##2}%\n\t}\n\t\\@deffield{name}{#1}\n\t\\@deffield{eng}{#2}\n\t\\@deffield{type}{#3}\n\t\\@deffield{dir}{#2}\n\t\\@deffield{exec}{#2}\n\t\\@deffield{input}{#2.in}\n\t\\@deffield{output}{#2.out}\n\t\\@deffield{tl}{#4 秒}\n\t\\@deffield{ml}{#5 MiB}\n\t\\@deffield{testnum}{#6}\n\t\\@deffield{scoreequal}{#7}\n\t\\@deffield{cppsrc}{#2.cpp}\n\\endgroup}\n\n% title page definition\n\\newcommand{\\subtitle}[1]{\\gdef\\@subtitle{#1}}\n\\newcommand{\\@subtitle}{}\n\\renewcommand{\\@title}{}\n\\renewcommand{\\@author}{}\n\\renewcommand{\\@date}{}\n\n\\newcommand{\\oicjudgermachine}{}\n\\newcommand{\\oicjudgerenvironment}{}\n\\newcommand{\\oicattention}{}\n\n\\listadd{\\oicattention}{文件名（程序名和输入输出文件名）必须使用英文小写。赛后正式测试时将以选手留在题目目录下的源代码为准。}\n\\listadd{\\oicattention}{\\texttt{main} 函数的返回值类型必须是 \\texttt{int}，程序正常结束时返回值必须是 0。}\n\\listadd{\\oicattention}{若无特殊说明，结果的比较方式为全文比较（过滤行末空格及文末回车）。}\n\\listadd{\\oicattention}{选手提交的程序源文件必须不大于 100KB。}\n\\listadd{\\oicattention}{程序可使用的栈空间内存限制与题目的内存限制一致。}\n\\listadd{\\oicattention}{禁止在源代码中改变编译器参数（如使用 \\texttt{\\#pragma} 命令），禁止使用系统结构相关指令（如内联汇编）和其他可能造成不公平的方法。}\n\n\\newcommand{\\oic@getfield}[2]{%\n\t\\csname oic@prob@#1@#2\\endcsname\n}\n\\newcommand{\\oictitlepage}{%\n\t\\clearpage\n\t\\thispagestyle{empty}\n\t\\maketitle\n}\n\\renewcommand{\\maketitle}{\\begingroup%\n\t\\expandafter\\ifstrempty\\expandafter{\\@title}{}{%\n\t\t\\begin{center}\n\t\t\t\\centering\\bfseries\\huge\\@title\n\t\t\\end{center}\n\t}\n\t\\expandafter\\ifstrempty\\expandafter{\\@subtitle}{}{%\n\t\t\\begin{center}\n\t\t\t\\kaishu\\huge\\@subtitle\n\t\t\\end{center}\n\t}\n\t\\expandafter\\ifstrempty\\expandafter{\\@author}{}{%\n\t\t\\begin{center}\n\t\t\t\\kaishu\\large\\@author\n\t\t\\end{center}\n\t}\n\t\\expandafter\\ifstrempty\\expandafter{\\@date}{}{%\n\t\t\\begin{center}\n\t\t\t\\heiti\\large 时间：\\@date\n\t\t\\end{center}\n\t}\n\n\t\\ifnum \\value{oic@probnum}=3\n\t\t\\edef\\hdrwidth{0.22\\textwidth}\n\t\\else \\ifnum \\value{oic@probnum}=4\n\t\t\\edef\\hdrwidth{0.20\\textwidth}\n\t\\else\n\t\t\\edef\\hdrwidth{\\dimexpr \\textwidth/(\\theoic@probnum+1) \\relax}\n\t\\fi \\fi\n\n\t\\def\\@printcol##1##2##3{& ##1\\oic@getfield{##3}{##2}}\n\t\\def\\@printrow##1##2{\\forlistloop{\\@printcol{##1}{##2}}{\\oic@probindexlist}}\n\n\t\\begin{center}\n\t\\begin{tabularx}{\\textwidth}{|p{\\hdrwidth}|*{\\theoic@probnum}{X|}}\n\t\t\\hline\n\t\t题目名称 \\@printrow{}{name} \\\\\n\t\t\\hline\n\t\t题目类型 \\@printrow{}{type} \\\\\n\t\t\\hline\n\t\t目录 \\@printrow{\\ttfamily}{dir} \\\\\n\t\t\\hline\n\t\t可执行文件名 \\@printrow{\\ttfamily}{exec} \\\\\n\t\t\\hline\n\t\t输入文件名 \\@printrow{\\ttfamily}{input} \\\\\n\t\t\\hline\n\t\t输出文件名 \\@printrow{\\ttfamily}{output} \\\\\n\t\t\\hline\n\t\t每个测试点时限 \\@printrow{}{tl} \\\\\n\t\t\\hline\n\t\t空间限制 \\@printrow{}{ml} \\\\\n\t\t\\hline\n\t\t测试点数目 \\@printrow{}{testnum} \\\\\n\t\t\\hline\n\t\t测试点是否等分 \\@printrow{}{scoreequal} \\\\\n\t\t\\hline\n\t\\end{tabularx}\n\t\\end{center}\n\n\t\\par 提交源程序文件名\n\t\\begin{center}\n\t\\begin{tabularx}{\\textwidth}{|p{\\hdrwidth}|*{\\arabic{oic@probnum}}{X|}}\n\t\t\\hline\n\t\t对于 C++ 语言 \\@printrow{\\ttfamily}{cppsrc} \\\\\n\t\t\\hline\n\t\\end{tabularx}\n\t\\end{center}\n\n\t编译选项\n\t\\begin{center}\n\t\\begin{tabularx}{\\textwidth}{|p{\\hdrwidth}|X<{\\centering}|}\n\t\t\\hline\n\t\t对于 C++ 语言 & \\texttt{-O2 -std=c++14} \\\\\n\t\t\\hline\n\t\\end{tabularx}\n\t\\end{center}\n\n\t\\textbf{注意事项（请仔细阅读）}\n\t\\begin{enumerate}\n\t\t\\expandafter\\ifstrempty\\expandafter{\\oicjudgermachine}{}{%\n\t\t\t\\item 测试机器：\\oicjudgermachine。\n\t\t}\n\t\t\\expandafter\\ifstrempty\\expandafter{\\oicjudgerenvironment}{}{%\n\t\t\t\\item 测试环境：\\oicjudgerenvironment。\n\t\t}\n\t\t\\forlistloop{\\item }{\\oicattention}\n\t\\end{enumerate}\n\\endgroup}\n\n% problem page definition\n\\newcounter{oic@curprob}\n\\newcommand{\\oicnextproblem}{\\begingroup%\n\t\\clearpage\n\t\\stepcounter{oic@curprob}%\n\t\\edef\\name{\\oic@getfield{\\alph{oic@curprob}}{name}}%\n\t\\edef\\eng{\\oic@getfield{\\alph{oic@curprob}}{eng}}%\n\t\\section{\\name（\\eng）}%\n\\endgroup}\n\n% subsections definition\n\\newcommand{\\oicbackground}{%\n\t\\subsection{题目背景}\n}\n\\newcommand{\\oicstatement}{%\n\t\\subsection{题目描述}\n}\n\\newcommand{\\oicinputformat}{%\n\t\\subsection{输入格式}\n\t从文件 \\oicfilename{\\oic@getfield{\\alph{oic@curprob}}{input}} 中读入数据。\\par\n}\n\\newcommand{\\oicoutputformat}{%\n\t\\subsection{输出格式}\n\t输出到文件 \\oicfilename{\\oic@getfield{\\alph{oic@curprob}}{output}} 中。\\par\n}\n\\newcommand{\\oicsampleinput}[1]{%\n\t\\subsection{样例 #1 输入}\n}\n\\newcommand{\\oicsampleoutput}[1]{%\n\t\\subsection{样例 #1 输出}\n}\n\\newcommand{\\oicsampleexplain}[1]{%\n\t\\subsection{样例 #1 解释}\n}\n\\newcommand{\\oicsamplefile}[1]{\\begingroup%\n\t\\subsection{样例 #1}\n\t\\edef\\base{\\oic@getfield{\\alph{oic@curprob}}{eng}}%\n\t见选手目录下的 \\oicfilename{\\base/\\base#1.in} 与 \\oicfilename{\\base/\\base#1.ans}。\n\\endgroup}\n\\newcommand{\\oicimplementation}{%\n\t\\subsection{实现细节}\n}\n\\newcommand{\\oictesting}{%\n\t\\subsection{测试程序方式}\n}\n\\newcommand{\\oicscoring}{%\n\t\\subsection{评分方式}\n}\n\\newcommand{\\oicconstraints}{%\n\t\\subsection{数据范围}\n}\n\\newcommand{\\oichints}{%\n\t\\subsection{提示}\n}\n\n% environment definition\n\\newminted[oicsample]{text}{}\n\\newmintedfile[oicsamplefrom]{text}{}\n\n\\usepackage{tabularray}\n\n% table environment\n\\newlength{\\oictableaboveskip}\n\\newlength{\\oictablebelowskip}\n\\setlength{\\oictableaboveskip}{0.8\\baselineskip}\n\\setlength{\\oictablebelowskip}{0.8\\baselineskip}\n\n\\NewTblrEnviron{oic@tblr}\n\\SetTblrInner[oic@tblr]{\n    rowsep = 0pt,\n    hlines = {\\arrayrulewidth},\n    hline{1,Z} = {5\\arrayrulewidth},\n    hline{2} = {3\\arrayrulewidth},\n    vline{2-Y} = {\\arrayrulewidth},\n}\n\\NewDocumentEnvironment{oictable}{m +b}{%\n    \\par\n    \\addvspace{\\oictableaboveskip}%\n    \\begingroup\n    \\centering\n    \\begin{oic@tblr}{colspec={#1}}\n        #2\n    \\end{oic@tblr}%\n    \\par\n    \\endgroup\n    \\addvspace{\\oictablebelowskip}%\n}\n{}\n";
+// Minimal stored (uncompressed) ZIP writer shared by the XLSX and LaTeX exports.
+// Keeping it dependency-free lets both exports work offline in the userscript.
+function crc32(bytes) {
+  let crc = 0xffffffff;
+  for (const byte of bytes) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function u16(value) {
+  return Uint8Array.of(value & 255, (value >>> 8) & 255);
+}
+
+function u32(value) {
+  return Uint8Array.of(value & 255, (value >>> 8) & 255, (value >>> 16) & 255, (value >>> 24) & 255);
+}
+
+function joinBytes(parts) {
+  const result = new Uint8Array(parts.reduce((size, part) => size + part.length, 0));
+  let offset = 0;
+  for (const part of parts) { result.set(part, offset); offset += part.length; }
+  return result;
+}
+
+/** Create a ZIP with stored entries. Each entry is `{name, data}`. */
+function createStoredZip(files) {
+  if (!Array.isArray(files) || !files.length) throw new Error('ZIP 没有可写入的文件。');
+  const encoder = new TextEncoder(), localParts = [], centralParts = [], names = new Set();
+  let offset = 0;
+  for (const file of files) {
+    const name = String(file?.name || '');
+    if (!name || names.has(name)) throw new Error('ZIP 文件名缺失或重复。');
+    names.add(name);
+    const encodedName = encoder.encode(name);
+    const data = typeof file.data === 'string' ? encoder.encode(file.data) : file.data;
+    if (!(data instanceof Uint8Array)) throw new Error('ZIP 文件内容格式不正确。');
+    const checksum = crc32(data), size = data.length;
+    const local = joinBytes([u32(0x04034b50), u16(20), u16(0x800), u16(0), u16(0), u16(33), u32(checksum), u32(size), u32(size), u16(encodedName.length), u16(0), encodedName, data]);
+    localParts.push(local);
+    const central = joinBytes([u32(0x02014b50), u16(20), u16(20), u16(0x800), u16(0), u16(0), u16(33), u32(checksum), u32(size), u32(size), u16(encodedName.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(offset), encodedName]);
+    centralParts.push(central);
+    offset += local.length;
+  }
+  const central = joinBytes(centralParts), locals = joinBytes(localParts);
+  return joinBytes([locals, central, u32(0x06054b50), u16(0), u16(0), u16(files.length), u16(files.length), u32(central.length), u32(locals.length), u16(0)]);
+}
+
 function statementDateParts(time) {
   const parts = new Intl.DateTimeFormat('en-US', {timeZone: 'Asia/Shanghai', year: 'numeric', month: 'numeric', day: 'numeric'}).formatToParts(new Date(time));
   const value = type => parts.find(part => part.type === type)?.value || '';
@@ -703,32 +752,6 @@ function statementDateRange(start, end) {
   return from.year === to.year && from.month === to.month && from.day === to.day
     ? first
     : `${first} — ${to.year} 年 ${to.month} 月 ${to.day} 日`;
-}
-
-function cssString(value) {
-  return '"' + String(value)
-    .replace(/\\/g, '\\\\')
-    .replace(/"/g, '\\"')
-    .replace(/[\n\r\f]+/g, ' ') + '"';
-}
-
-const statementPageFont = '"Times New Roman","SimSun","Songti SC","Noto Serif CJK SC",serif';
-
-function statementCoverTable(statement) {
-  return {
-    columns: ['题号', '题目名称', '时间限制', '空间限制'],
-    rows: statement.problems.map(problem => [problem.label, problem.title, problem.timeLimitText, problem.memoryLimitText])
-  };
-}
-
-function statementPageRules(statement) {
-  const header = `width:50%;vertical-align:top;padding-top:41pt;font-family:${statementPageFont};font-size:10pt;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis`;
-  const footer = `font-family:${statementPageFont};font-size:10pt;line-height:1.2;color:#000;vertical-align:middle`;
-  return [
-    `@page{size:A4;margin:25mm;@top-left{content:${cssString(statement.contestTitle)};${header}}@top-right{content:"";${header};text-align:right}@top-center{content:"";width:100%;margin-top:54pt;border-top:0.2pt solid #000}@bottom-center{content:"第 " counter(page) " 页\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0共 " counter(pages) " 页";${footer}}}`,
-    '@page cover{@top-left{content:none}@top-right{content:none}@top-center{content:none;border-top:none}@bottom-center{content:none}}',
-    ...statement.problems.map((problem, index) => `@page p${index}{@top-right{content:${cssString(problem.heading)};}}`)
-  ].join('\n');
 }
 
 function createStatementCore(Core) {
@@ -762,224 +785,810 @@ function createStatementCore(Core) {
   return {compile};
 }
 
-// Native PDF printing keeps Chinese text selectable and MathJax formulas sharp.
-function printStatement(view, title) {
-  // Chrome uses the top-level title for an iframe's default PDF filename.
-  const owner=view.parent.document,previous=owner.title,dialog=view.frameElement?.closest('dialog');
-  const restore=()=>{
-    view.removeEventListener('afterprint',restore);dialog?.removeEventListener('close',restore);
-    if(owner.title===title)owner.title=previous;
-  };
-  view.addEventListener('afterprint',restore);dialog?.addEventListener('close',restore);
-  owner.title=title;
-  try{view.focus();view.print();}catch(error){restore();throw error;}
+// Markdown -> LaTeX for the statement export. This module is intentionally
+// DOM-free so the converter and ZIP builder can be tested with node:test.
+
+const LATEX_SPECIALS = /[\\{}$&#^_%~<>]/g;
+const LATEX_REPLACEMENTS = {
+  '\\': '\\textbackslash{}',
+  '{': '\\{',
+  '}': '\\}',
+  '$': '\\$',
+  '&': '\\&',
+  '#': '\\#',
+  '^': '\\textasciicircum{}',
+  '_': '\\_',
+  '%': '\\%',
+  '~': '\\textasciitilde{}',
+  '<': '\\textless{}',
+  '>': '\\textgreater{}'
+};
+
+const CJK = /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/;
+const IMAGE_SIZE = 25 * 1024 * 1024;
+const IMAGE_MAX = 10 * 1024 * 1024;
+const IMAGE_COUNT = 40;
+
+function latexEscape(value) {
+  return String(value ?? '').replace(LATEX_SPECIALS, character => LATEX_REPLACEMENTS[character]);
 }
 
-function markStatementHeadings(root) {
-  for(const heading of root.querySelectorAll('h1,h2')){
-    const text=heading.textContent.trim();
-    if(!text||(text.startsWith('【')&&text.endsWith('】')))continue;
-    heading.classList.add('oic-brackets');
-  }
+function escapeCode(value) {
+  return String(value ?? '').replace(/[\\{}$&#^_%~]/g, character => LATEX_REPLACEMENTS[character]);
 }
 
-function markStatementCodeLines(root, doc) {
-  for(const pre of root.querySelectorAll('pre')){
-    const code=pre.querySelector(':scope > code');
-    if(!code||code.querySelector('.code-line'))continue;
-    const text=code.textContent.replace(/\r\n?/g,'\n');
-    if(!text)continue;
-    const lines=text.replace(/\n$/,'').split('\n');
-    code.textContent='';
-    for(let index=0;index<lines.length;index++){
-      const line=doc.createElement('span');
-      line.className='code-line';line.dataset.line=String(index+1);line.textContent=lines[index];
-      code.append(line);
+function safeFilename(value) {
+  return String(value ?? '').normalize('NFKC').replace(/[\u0000-\u001f\u007f\\/:*?"<>|]/g, '_').trim().slice(0, 60) || 'Statement';
+}
+
+function decodeEntities(value) {
+  const named = {amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: '\u00a0'};
+  return String(value).replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (match, entity) => {
+    if (entity[0] === '#') {
+      const code = entity[1].toLowerCase() === 'x' ? Number.parseInt(entity.slice(2), 16) : Number.parseInt(entity.slice(1), 10);
+      try { return Number.isInteger(code) && code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : match; } catch { return match; }
     }
-  }
+    return named[entity.toLowerCase()] ?? match;
+  });
 }
 
-function compactStatementTables(root) {
-  for(const table of root.querySelectorAll('table')){
-    if((table.rows[0]?.cells.length||0)>=7)table.classList.add('compact');
-  }
+function cleanHtml(value) {
+  let text = String(value ?? '');
+  text = text.replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, '');
+  text = text.replace(/<br\s*\/?>/gi, '\n');
+  text = text.replace(/<img\b([^>]*)>/gi, (match, attributes) => {
+    const source = /\bsrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i.exec(attributes);
+    const alt = /\balt\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i.exec(attributes);
+    return source ? `![${alt?.[1] ?? alt?.[2] ?? alt?.[3] ?? ''}](${source[1] ?? source[2] ?? source[3] ?? ''})` : '';
+  });
+  text = text.replace(/<a\b[^>]*\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))[^>]*>([\s\S]*?)<\/a\s*>/gi,
+    (match, double, single, bare, label) => `[${label.replace(/<[^>]+>/g, '')}](${double ?? single ?? bare ?? ''})`);
+  text = text.replace(/<(strong|b)\b[^>]*>/gi, '**').replace(/<\/(strong|b)\s*>/gi, '**');
+  text = text.replace(/<(em|i)\b[^>]*>/gi, '*').replace(/<\/(em|i)\s*>/gi, '*');
+  text = text.replace(/<code\b[^>]*>/gi, '`').replace(/<\/code\s*>/gi, '`');
+  text = text.replace(/<\/(p|div|li|tr|h[1-6])\s*>/gi, '\n').replace(/<(p|div|br|li|tr|h[1-6])\b[^>]*>/gi, '\n');
+  text = text.replace(/<[^>]+>/g, '');
+  return decodeEntities(text);
 }
 
-function clearLazyFontRanges(math) {
-  const fonts=math.OutputJax?.SVG?.FONTDATA?.FONTS;
-  if(!fonts)return false;
-  // All SVG glyph tables are bundled. Stale lazy-load ranges in 2.7.7 otherwise
-  // try to fetch CJK/fallback glyphs from the invalid offline root and hang.
-  for(const font of Object.values(fonts)){
-    if(!font||typeof font!=='object')continue;
-    try{delete font.Ranges;}catch{}
+function findClosing(text, start, close) {
+  let index = start;
+  while ((index = text.indexOf(close, index)) >= 0) {
+    let slashes = 0;
+    for (let i = index - 1; i >= 0 && text[i] === '\\'; i--) slashes++;
+    if (slashes % 2 === 0) return index;
+    index += close.length;
   }
-  return true;
+  return -1;
 }
 
-// HTML-CSS output lives in the page's MathJax styles. Copy those into the
-// preview iframe so the copied formulas keep their fonts and metrics.
-function copyPageMathStyles(doc) {
-  for(const node of document.querySelectorAll('style,link[rel="stylesheet"]')){
-    const id=node.id||'',text=node.textContent||'';
-    if(!/^MathJax/.test(id)&&!/MathJax|MJX_|mjx-/.test(text.slice(0,20000))&&!(node.tagName==='LINK'&&/MathJax/i.test(node.href||'')))continue;
-    const copy=doc.importNode(node,true);
-    copy.setAttribute('data-am-math-style','');
-    doc.head.append(copy);
-  }
-}
-
-// The LaTeX class adds the underdot to CJK bold text only; Latin bold stays plain.
-function emphasizeStatementCjk(root) {
-  const doc=root.ownerDocument,walker=doc.createTreeWalker(root,4),nodes=[];
-  while(walker.nextNode()){
-    const node=walker.currentNode,parent=node.parentElement;
-    if(!parent||!parent.closest('strong,b')||parent.closest('.cjk-emphasis'))continue;
-    if(parent.closest('pre,code,script,style,textarea,svg,.MathJax,.MathJax_SVG,.MathJax_CHTML,.MathJax_HTML,.MathJax_MathML,mjx-container'))continue;
-    if(/[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]/.test(node.nodeValue||''))nodes.push(node);
-  }
-  for(const node of nodes){
-    const fragment=doc.createDocumentFragment();
-    for(const part of node.nodeValue.split(/([\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]+)/)){
-      if(!part)continue;
-      if(/^[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]+$/.test(part)){
-        const span=doc.createElement('span');span.className='cjk-emphasis';span.textContent=part;fragment.append(span);
-      }else fragment.append(doc.createTextNode(part));
+function readBalanced(text, start, open, close) {
+  let depth = 1, index = start + open.length;
+  while (index < text.length) {
+    if (text.startsWith(close, index)) {
+      depth--;
+      if (!depth) return {body: text.slice(start + open.length, index), end: index + close.length};
+      index += close.length;
+      continue;
     }
-    node.replaceWith(fragment);
+    if (text.startsWith(open, index)) { depth++; index += open.length; continue; }
+    if (text[index] === '\\') { index += 2; continue; }
+    index++;
   }
+  return null;
 }
 
-function buildStatementCover(doc, statement) {
-  const cover=doc.createElement('section');cover.className='cover';
-  const title=doc.createElement('h1');title.className='cover-title';title.textContent=statement.contestTitle;
-  const date=doc.createElement('p');date.className='cover-date';date.textContent=`时间：${statement.dateText}`;
-  const table=doc.createElement('table');table.className='cover-table';
-  const {columns,rows}=statementCoverTable(statement);
-  const head=doc.createElement('thead'),headRow=doc.createElement('tr');
-  for(const column of columns){const cell=doc.createElement('th');cell.scope='col';cell.textContent=column;headRow.append(cell);}
-  head.append(headRow);
-  const body=doc.createElement('tbody');
-  for(const row of rows){
-    const tr=doc.createElement('tr');
-    for(const value of row){const cell=doc.createElement('td');cell.textContent=value;tr.append(cell);}
-    body.append(tr);
-  }
-  table.append(head,body);cover.append(title,date,table);
-  return cover;
+function readInlineCode(text, start) {
+  const run = text.slice(start).match(/^`+/)?.[0];
+  if (!run) return null;
+  const close = findClosing(text, start + run.length, run);
+  if (close < 0) return null;
+  return {body: text.slice(start + run.length, close), end: close + run.length};
 }
 
-function buildStatementProblem(doc, problem) {
-  const section=doc.createElement('section');section.className='problem';
-  const heading=doc.createElement('h1');heading.className='problem-title';heading.textContent=problem.heading;section.append(heading);
-  const body=doc.createElement('div');body.className='markdown-body';
-  const parsed=new DOMParser().parseFromString(pageWindow.markdown.toHTML(problem.description,'Maruku'),'text/html');
-  parsed.querySelectorAll('script,iframe,object,embed,link,meta,base,style,form,input,button,textarea').forEach(n=>n.remove());
-  for(const node of parsed.body.querySelectorAll('*'))for(const attr of [...node.attributes]){
-    if(/^on/i.test(attr.name)||['srcdoc','srcset'].includes(attr.name))node.removeAttribute(attr.name);
-    if(['href','src','xlink:href'].includes(attr.name)){
-      if(attr.name==='src'&&node.tagName==='IMG'&&/^data:image\/(?:png|jpe?g|gif|webp);base64,/i.test(attr.value))continue;
-      const url=new URL(attr.value,location.href);
-      if(!['https:','http:'].includes(url.protocol))node.removeAttribute(attr.name);
-      else{if(url.origin===location.origin)url.pathname=accodingPath(url.pathname);node.setAttribute(attr.name,url.href);}
-    }
-  }
-  body.append(...[...parsed.body.childNodes].map(n=>doc.importNode(n,true)));
-  markStatementHeadings(body);markStatementCodeLines(body,doc);compactStatementTables(body);
-  section.append(body);return section;
+function readImage(text, start) {
+  if (!text.startsWith('![', start)) return null;
+  const label = readBalanced(text, start + 1, '[', ']');
+  if (!label) return null;
+  const target = readBalanced(text, label.end, '(', ')');
+  if (!target) return null;
+  const body = target.body.trim();
+  const match = /^(\S+?)(?:\s+["']([\s\S]*)["'])?$/.exec(body);
+  if (!match) return null;
+  return {alt: label.body, url: match[1].replace(/^<|>$/g, ''), end: target.end};
 }
 
-async function renderStatement(view, statement, isCurrent, onProgress) {
-  const doc=view.document;
-  doc.open();doc.write('<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title></title></head><body></body></html>');doc.close();
-  doc.title=statement.title;
-  const style=doc.createElement('style');style.textContent=ACCODING_STATEMENT_CSS;doc.head.append(style);
-  const pageStyle=doc.createElement('style');pageStyle.textContent=statementPageRules(statement);doc.head.append(pageStyle);
-  const toolbar=doc.createElement('div');toolbar.className='toolbar';
-  const print=doc.createElement('button');print.textContent='保存为 PDF';print.disabled=true;
-  const status=doc.createElement('span');status.setAttribute('role','status');status.setAttribute('aria-live','polite');toolbar.append(print,status);doc.body.append(toolbar);
-  const progress=text=>{status.textContent=text;onProgress(text);};
-  const current=()=>{if(view.closed)throw new Error('Statement 窗口已关闭。');if(!isCurrent())throw new Error('已切换比赛，导出已停止。');};
-  try{
-    const main=doc.createElement('main');
-    main.append(buildStatementCover(doc,statement));doc.body.append(main);
-    for(const [index,p] of statement.problems.entries()){
-      current();progress(`正在排版 ${p.heading}…`);
-      const section=buildStatementProblem(doc,p);section.style.setProperty('page',`p${index}`);main.append(section);
-    }
-    progress('正在编译公式与加载图片…');
-    const bodies=[...main.querySelectorAll('.markdown-body')];
-    const pageMath=pageWindow.MathJax;
-    if(!pageMath?.Hub?.Queue)throw new Error('页面 MathJax 未就绪，请刷新页面后重试。');
-    clearLazyFontRanges(pageMath);
-    // Reuse the MathJax already running on the OJ page. Typeset a hidden copy
-    // in the page, then move the rendered formulas into the print iframe.
-    const source=document.createElement('div');
-    source.style.cssText='position:absolute;left:-100000px;top:0;width:160mm;font-family:"SimSun",serif;font-size:12pt;line-height:1.565';
-    const clones=bodies.map(body=>{
-      const clone=document.importNode(body,true);
-      clone.classList.remove('markdown-body');clone.classList.add('am-statement-source-body');
-      source.append(clone);return clone;
-    });
-    document.body.append(source);
-    try{
-      for(const [index,clone] of clones.entries()){
-        progress(`正在复用页面公式 ${index+1}/${clones.length}…`);
-        await new Promise((resolve,reject)=>{
-          const timeout=setTimeout(()=>reject(new Error(`公式编译超时（${statement.problems[index]?.heading||`第 ${index+1} 题`}），请重试。`)),60000);
-          pageMath.Hub.Queue(['Typeset',pageMath.Hub,clone],()=>{clearTimeout(timeout);resolve();});
-        });
+function readLink(text, start) {
+  if (text[start] !== '[') return null;
+  const label = readBalanced(text, start, '[', ']');
+  if (!label || text[label.end] !== '(') return null;
+  const target = readBalanced(text, label.end, '(', ')');
+  if (!target) return null;
+  return {label: label.body, url: target.body.trim().replace(/^<|>$/g, ''), end: target.end};
+}
+
+function mathAt(text, start) {
+  if (text.startsWith('\\[', start)) return {open: '\\[', close: '\\]', display: true};
+  if (text.startsWith('\\(', start)) return {open: '\\(', close: '\\)', display: false};
+  if (text.startsWith('$$', start)) return {open: '$$', close: '$$', display: true};
+  if (text[start] === '$' && /\S/.test(text[start + 1] || '')) return {open: '$', close: '$', display: false};
+  return null;
+}
+
+function joinSoftLines(lines) {
+  let result = '';
+  for (const line of lines) {
+    if (!result) { result = line; continue; }
+    const left = result.at(-1) || '', right = line[0] || '';
+    result += CJK.test(left) && CJK.test(right) ? line : ` ${line}`;
+  }
+  return result;
+}
+
+function renderInline(source, state) {
+  const text = cleanHtml(source);
+  let out = '';
+  for (let i = 0; i < text.length;) {
+    if (text[i] === '\n') { out += '\\newline{}\n'; i++; continue; }
+    const math = mathAt(text, i);
+    if (math) {
+      const close = findClosing(text, i + math.open.length, math.close);
+      if (close >= 0) {
+        const body = text.slice(i + math.open.length, close);
+        if (math.open === '$' && (body.includes('\n') || !body.trim())) {
+          out += '\\$';
+          i++;
+          continue;
+        }
+        out += math.open === '$$' ? `\\[\n${body}\n\\]` : `${math.open}${body}${math.close}`;
+        i = close + math.close.length;
+        continue;
       }
-      copyPageMathStyles(doc);
-      bodies.forEach((body,index)=>{body.innerHTML=clones[index].innerHTML;});
-    }finally{source.remove();}
-    emphasizeStatementCjk(main);
-    const failed=[];
-    await Promise.all([...main.querySelectorAll('img')].map(img=>new Promise(resolve=>{
-      const done=()=>{clearTimeout(timer);img.onload=img.onerror=null;if(!img.naturalWidth)failed.push(img.alt||img.src);resolve();};
-      const timer=setTimeout(done,20000);img.loading='eager';img.onload=img.onerror=done;if(img.complete)done();
-    })));
-    await doc.fonts.ready;current();
-    if(failed.length)throw new Error(`${failed.length} 张图片加载失败，未打开打印。请检查题面图片后重试：\n${failed.join('\n')}`);
-    if(main.querySelector('.MathJax_Error'))throw new Error('题面中存在无法编译的公式，请检查后重试。');
-    // Never print a silently broken statement when the OJ page's MathJax did not run.
-    const mathText=[...main.querySelectorAll('.markdown-body p,.markdown-body li,.markdown-body td,.markdown-body th,.markdown-body h1,.markdown-body h2,.markdown-body h3')].some(node=>/\$[^$\n]+\$|\\\(|\\\[/.test(node.textContent));
-    if(mathText&&!main.querySelector('.MathJax_SVG,.MathJax_CHTML,.MathJax_HTML,.MathJax_MathML,mjx-container'))throw new Error('题面公式未能渲染，请刷新页面后重试。');
-    progress('排版完成。在打印窗口选择“另存为 PDF”，并关闭浏览器的“页眉和页脚”。');
-    const printWithReminder=()=>{
-      const message='打印窗口的“更多设置”中请取消勾选“页眉和页脚”，否则 PDF 会带上浏览器自带的日期、网址和页码。';
-      if(view.confirm&&!view.confirm(message))return;
-      printStatement(view,statement.title);
-    };
-    print.disabled=false;print.onclick=printWithReminder;printWithReminder();
-  }catch(error){progress('导出失败：'+error.message);throw error;}
+      if (math.open !== '$') state.warnings.push('存在未闭合的公式定界符，已按普通文字导出。');
+      out += latexEscape(math.open);
+      i += math.open.length;
+      continue;
+    }
+    if (text[i] === '\\' && i + 1 < text.length && /[\\`*_[\]()#+\-.!{}>~|$]/.test(text[i + 1])) {
+      out += latexEscape(text[i + 1]);
+      i += 2;
+      continue;
+    }
+    if (text[i] === '`') {
+      const code = readInlineCode(text, i);
+      if (code) {
+        out += `\\texttt{${escapeCode(code.body)}}`;
+        i = code.end;
+        continue;
+      }
+    }
+    if (text.startsWith('![', i)) {
+      const image = readImage(text, i);
+      if (image) {
+        const entry = state.addImage(image.url, image.alt);
+        out += `\\par\\noindent\\begin{center}\\includegraphics[width=\\linewidth,height=0.75\\textheight,keepaspectratio]{images/${entry.index}}\\end{center}\\par\n`;
+        i = image.end;
+        continue;
+      }
+    }
+    if (text[i] === '[') {
+      const link = readLink(text, i);
+      if (link) {
+        out += `\\href{${latexEscape(link.url)}}{${renderInline(link.label, state)}}`;
+        i = link.end;
+        continue;
+      }
+    }
+    if (text.startsWith('**', i) || text.startsWith('__', i)) {
+      const marker = text.slice(i, i + 2), close = findClosing(text, i + 2, marker);
+      if (close > i + 2) {
+        out += `\\textbf{${renderInline(text.slice(i + 2, close), state)}}`;
+        i = close + 2;
+        continue;
+      }
+    }
+    if (text[i] === '*' || text[i] === '_') {
+      const previous = text[i - 1] || ' ', next = text[i + 1] || ' ';
+      if (next && !/\s/.test(next) && (text[i] === '*' || (!/[\w]/.test(previous) || !/[\w]/.test(next)))) {
+        const close = findClosing(text, i + 1, text[i]);
+        if (close > i + 1) {
+          out += `\\emph{${renderInline(text.slice(i + 1, close), state)}}`;
+          i = close + 1;
+          continue;
+        }
+      }
+    }
+    if (text.startsWith('~~', i)) {
+      const close = findClosing(text, i + 2, '~~');
+      if (close > i + 2) {
+        out += renderInline(text.slice(i + 2, close), state);
+        i = close + 2;
+        continue;
+      }
+    }
+    if (/^https?:\/\//.test(text.slice(i))) {
+      const url = text.slice(i).match(/^https?:\/\/[^\s<>]+/)?.[0];
+      if (url) {
+        out += `\\url{${latexEscape(url.replace(/[.,;:!?]+$/, ''))}}`;
+        i += url.replace(/[.,;:!?]+$/, '').length;
+        continue;
+      }
+    }
+    out += latexEscape(text[i]);
+    i++;
+  }
+  return out;
+}
+
+function isFence(line) {
+  return /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line);
+}
+
+function isHr(line) {
+  return /^ {0,3}((\*\s*){3,}|(-\s*){3,}|(_\s*){3,})$/.test(line);
+}
+
+function isHeading(line) {
+  return /^(#{1,6})\s+/.test(line);
+}
+
+function isList(line) {
+  return /^(\s*)([-+*]|\d+[.)])\s+/.test(line);
+}
+
+function isTableSeparator(line) {
+  return /\|/.test(line) && /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(line);
+}
+
+function splitTableRow(line) {
+  let value = line.trim();
+  if (value.startsWith('|')) value = value.slice(1);
+  if (value.endsWith('|') && !value.endsWith('\\|')) value = value.slice(0, -1);
+  const cells = [];
+  let cell = '', inCode = false;
+  for (let i = 0; i < value.length; i++) {
+    if (value[i] === '`') { inCode = !inCode; cell += value[i]; continue; }
+    if (value[i] === '\\' && value[i + 1] === '|') { cell += '|'; i++; continue; }
+    if (value[i] === '|' && !inCode) { cells.push(cell.trim()); cell = ''; continue; }
+    cell += value[i];
+  }
+  cells.push(cell.trim());
+  return cells;
+}
+
+function codeLanguage(value) {
+  const language = String(value || '').trim().split(/\s+/, 1)[0].toLowerCase().replace(/^[.{}]+|[.{}]+$/g, '');
+  const map = {
+    'c++': 'cpp', cxx: 'cpp', cc: 'cpp', c: 'c', py: 'python', python3: 'python',
+    js: 'javascript', ts: 'typescript', sh: 'bash', shell: 'bash', zsh: 'bash',
+    txt: 'text', plain: 'text', '': 'text'
+  };
+  return map[language] || language;
+}
+
+function renderCode(code, language, state) {
+  if (code.includes('\\end{minted}') || code.includes('\\end{Verbatim}')) {
+    throw new Error('代码块包含 LaTeX 环境结束标记 `\\end{minted}`，无法安全导出。');
+  }
+  const content = code.endsWith('\n') ? code.slice(0, -1) : code;
+  return `\n\\begin{minted}[breaklines]{${codeLanguage(language)}}\n${content}\n\\end{minted}\n`;
+}
+
+function renderTable(headerLine, separatorLine, bodyLines, state) {
+  const header = splitTableRow(headerLine), separator = splitTableRow(separatorLine);
+  if (header.length < 2 || separator.length !== header.length || !separator.every(cell => /^:?-{3,}:?$/.test(cell))) {
+    state.warnings.push('存在无法解析的表格，已按纯文本导出。');
+    return [...[headerLine, separatorLine, ...bodyLines].map(line => `\\noindent ${latexEscape(line)}\\par`)].join('\n');
+  }
+  const rows = bodyLines.map(splitTableRow);
+  if (rows.some(row => row.length !== header.length)) {
+    state.warnings.push('存在列数不一致的表格，已按纯文本导出。');
+    return [headerLine, separatorLine, ...bodyLines].map(line => `\\noindent ${latexEscape(line)}\\par`).join('\n');
+  }
+  const alignment = separator.map(cell => cell.startsWith(':') && cell.endsWith(':') ? 'c' : cell.endsWith(':') ? 'r' : 'l');
+  const columns = alignment.map(align => align === 'c'
+    ? '>{\\centering\\arraybackslash}X'
+    : align === 'r' ? '>{\\raggedleft\\arraybackslash}X' : '>{\\raggedright\\arraybackslash}X').join('');
+  const cell = value => renderInline(value, state);
+  const headerRow = header.map(value => `\\textbf{${cell(value)}}`).join(' & ');
+  const body = rows.map(row => row.map(cell).join(' & ') + ' \\\\').join('\n');
+  return `\n${header.length >= 7 ? '\\small\n' : ''}\\begin{xltabular}{\\linewidth}{${columns}}\n\\toprule\n${headerRow} \\\\\n\\midrule\n\\endhead\n\\bottomrule\n\\endlastfoot\n${body}\n\\end{xltabular}\n`;
+}
+
+function listMarker(line) {
+  const match = /^(\s*)([-+*]|\d+[.)])\s+(.*)$/.exec(line);
+  if (!match) return null;
+  return {indent: match[1].replace(/\t/g, '    ').length, ordered: /^\d/.test(match[2]), start: /^\d/.test(match[2]) ? Number.parseInt(match[2], 10) : 1, text: match[3]};
+}
+
+function renderList(lines, start, state) {
+  const first = listMarker(lines[start]);
+  const base = first.indent, ordered = first.ordered, startNumber = first.start;
+  const items = [];
+  let index = start;
+  while (index < lines.length) {
+    const line = lines[index];
+    if (!line.trim()) {
+      let next = index + 1;
+      while (next < lines.length && !lines[next].trim()) next++;
+      if (next >= lines.length || listMarker(lines[next])?.indent < base || !/^\s+/.test(lines[next])) break;
+      index = next;
+      continue;
+    }
+    const marker = listMarker(line);
+    if (!marker || marker.indent < base) break;
+    if (marker.indent > base) {
+      if (items.length) {
+        const nested = renderList(lines, index, state);
+        items.at(-1).children.push(nested.latex);
+        index = nested.next;
+        continue;
+      }
+      break;
+    }
+    if (marker.ordered !== ordered) break;
+    if (items.length && marker.ordered !== ordered) break;
+    const item = {parts: [marker.text], children: []};
+    index++;
+    while (index < lines.length) {
+      const next = lines[index];
+      if (!next.trim()) break;
+      const nested = listMarker(next);
+      if (nested && nested.indent > base) {
+        const child = renderList(lines, index, state);
+        item.children.push(child.latex);
+        index = child.next;
+        continue;
+      }
+      if (nested && nested.indent <= base) break;
+      if (/^\s+/.test(next)) { item.parts.push(next.trim()); index++; continue; }
+      break;
+    }
+    items.push(item);
+  }
+  const environment = ordered ? 'enumerate' : 'itemize';
+  const option = ordered && startNumber !== 1 ? `[start=${startNumber}]` : '';
+  const body = items.map(item => {
+    const content = renderInline(joinSoftLines(item.parts), state);
+    return `  \\item ${content}${item.children.length ? '\n' + item.children.join('\n') : ''}`;
+  }).join('\n');
+  return {latex: `\\begin{${environment}}${option}\n${body}\n\\end{${environment}}`, next: index};
+}
+
+function paragraph(lines, state) {
+  const text = lines.map(line => line.trim()).filter(Boolean).join('\n');
+  return `${renderInline(joinSoftLines(text.split('\n')), state)}\\par\n`;
+}
+
+function renderBlocks(lines, state) {
+  let out = '', index = 0;
+  while (index < lines.length) {
+    const line = lines[index];
+    if (!line.trim()) { index++; continue; }
+    const fence = isFence(line);
+    if (fence) {
+      const marker = fence[1], language = fence[2].trim(), content = [];
+      index++;
+      while (index < lines.length) {
+        const close = lines[index].match(/^ {0,3}(`{3,}|~{3,})[ \t]*$/);
+        if (close && close[1][0] === marker[0] && close[1].length >= marker.length) { index++; break; }
+        content.push(lines[index++]);
+      }
+      out += renderCode(content.join('\n'), language, state);
+      continue;
+    }
+    const pre = line.match(/^\s*<pre\b[^>]*>([\s\S]*?)<\/pre\s*>\s*$/i);
+    if (pre) {
+      const code = decodeEntities(pre[1].replace(/<[^>]+>/g, ''));
+      out += renderCode(code, 'text', state);
+      index++;
+      continue;
+    }
+    if (isHeading(line)) {
+      const match = /^(#{1,6})\s+(.*?)\s*#*\s*$/.exec(line);
+      const level = match[1].length;
+      const content = cleanHtml(match[2]).replace(/^【|】$/g, '');
+      if (content.trim()) out += `${level <= 2 ? '\\subsection' : '\\subsubsection'}{${renderInline(content, state)}}\n`;
+      index++;
+      continue;
+    }
+    if (isHr(line)) { out += '\\par\\noindent\\rule{\\linewidth}{0.4pt}\\par\n'; index++; continue; }
+    if (line.trimStart().startsWith('>')) {
+      const quote = [];
+      while (index < lines.length && (lines[index].trimStart().startsWith('>') || !lines[index].trim())) {
+        if (!lines[index].trim()) break;
+        quote.push(lines[index].replace(/^\s*>\s?/, ''));
+        index++;
+      }
+      out += `\\begin{quote}\n${renderBlocks(quote, state)}\\end{quote}\n`;
+      continue;
+    }
+    if (isList(line)) {
+      const list = renderList(lines, index, state);
+      out += `${list.latex}\n`;
+      index = list.next;
+      continue;
+    }
+    if (isTableSeparator(lines[index + 1] || '') && line.includes('|')) {
+      const header = line, separator = lines[index + 1], body = [];
+      index += 2;
+      while (index < lines.length && lines[index].trim() && lines[index].includes('|')) body.push(lines[index++]);
+      out += renderTable(header, separator, body, state);
+      continue;
+    }
+    if (/^( {4}|\t)/.test(line)) {
+      const code = [];
+      while (index < lines.length && (/^( {4}|\t)/.test(lines[index]) || !lines[index].trim())) {
+        if (!lines[index].trim()) { code.push(''); index++; continue; }
+        code.push(lines[index].replace(/^( {4}|\t)/, ''));
+        index++;
+      }
+      while (code.length && !code.at(-1)) code.pop();
+      out += renderCode(code.join('\n'), 'text', state);
+      continue;
+    }
+    const paragraphLines = [line];
+    index++;
+    while (index < lines.length) {
+      const next = lines[index];
+      if (!next.trim() || isFence(next) || isHeading(next) || isHr(next) || isList(next) ||
+          next.trimStart().startsWith('>') || isTableSeparator(lines[index + 1] || '') && next.includes('|') ||
+          /^( {4}|\t)/.test(next)) break;
+      paragraphLines.push(next);
+      index++;
+    }
+    out += paragraph(paragraphLines, state);
+  }
+  return out;
+}
+
+function markdownToLatex(markdown, options = {}) {
+  const warnings = [], images = [], seen = new Map();
+  const state = {
+    warnings,
+    addImage(url, alt) {
+      const key = String(url || '').trim();
+      if (!key) throw new Error('题面图片缺少地址。');
+      if (!seen.has(key)) {
+        if (images.length >= IMAGE_COUNT) throw new Error(`题面图片超过 ${IMAGE_COUNT} 张，未导出。`);
+        const entry = {index: images.length + 1, url: key, alt: String(alt || '')};
+        images.push(entry);
+        seen.set(key, entry);
+      }
+      return seen.get(key);
+    }
+  };
+  const source = String(markdown ?? '').replace(/\r\n?/g, '\n');
+  const normalized = typeof options.normalizeMath === 'function' ? options.normalizeMath(source) : source;
+  return {latex: renderBlocks(normalized.split('\n'), state).trim(), images, warnings};
+}
+
+function statementToLatex(statement, options = {}) {
+  if (!statement || !Array.isArray(statement.problems) || !statement.problems.length) throw new Error('没有可导出的题面。');
+  const warnings = [], images = [];
+  const body = statement.problems.map(problem => {
+    const converted = markdownToLatex(problem.description, {normalizeMath: options.normalizeMath});
+    warnings.push(...converted.warnings.map(warning => `${problem.heading}：${warning}`));
+    images.push(...converted.images.map(image => ({...image, problem: problem.heading})));
+    return `\\amproblem{${latexEscape(problem.label)}}{${latexEscape(problem.title)}}\n${converted.latex}\n`;
+  }).join('\n');
+  const coverRows = statement.problems.map(problem =>
+    `${latexEscape(problem.label)} & ${latexEscape(problem.title)} & ${latexEscape(problem.timeLimitText)} & ${latexEscape(problem.memoryLimitText)} \\\\ \\hline`
+  ).join('\n');
+  const tex = String.raw`\documentclass{oicontest}
+\usepackage{booktabs}
+\usepackage{xltabular}
+\graphicspath{{images/}}
+\title{${latexEscape(statement.contestTitle)}}
+\date{${latexEscape(statement.dateText)}}
+\setlength{\emergencystretch}{2em}
+\newcommand{\amproblem}[2]{\clearpage\section{#1\quad #2}}
+\begin{document}
+\thispagestyle{empty}
+\begin{center}
+{\heiti\bfseries\huge ${latexEscape(statement.contestTitle)}\par}
+\vspace{1.5em}
+{\heiti\large 时间：${latexEscape(statement.dateText)}\par}
+\end{center}
+\vspace{1em}
+\begin{xltabular}{\linewidth}{|p{0.08\linewidth}|p{0.42\linewidth}|p{0.17\linewidth}|p{0.17\linewidth}|}
+\hline
+\textbf{题号} & \textbf{题目名称} & \textbf{时间限制} & \textbf{空间限制} \\ \hline
+\endhead
+${coverRows}
+\end{xltabular}
+\clearpage
+${body}
+\end{document}
+`;
+  return {tex, images, warnings: [...new Set(warnings)]};
+}
+
+const README = `# Statement LaTeX 工程
+
+本目录由 Accoding Modern 生成。它只包含当前账号有权读取的比赛题面，不会上传任何内容。
+
+## 编译
+
+需要 TeX Live（含 XeLaTeX、ctex、xeCJK、minted、Pygments、tabularray、tcolorbox、fancyhdr、lastpage、booktabs、xltabular）。
+
+\`\`\`sh
+sh build.sh
+\`\`\`
+
+或：
+
+\`\`\`sh
+latexmk -xelatex main.tex
+\`\`\`
+
+必须运行两次，页脚的总页数才会正确。代码块使用 minted，因此需要 \`-shell-escape\` 和 Python Pygments。
+
+## 文件
+
+- \`main.tex\`：题面正文。
+- \`oicontest.cls\`：适配后的题面模板类。
+- \`images/\`：题面引用的图片。
+- \`build.sh\` / \`build.bat\`：编译脚本。
+
+## 字体
+
+模板优先使用 Windows 的 SimSun / SimHei / Consolas；没有时自动回退到 Songti SC / Heiti SC、Fandol 或 Noto CJK。ZIP 不包含任何专有字体文件。若本机缺少可用的中文 OpenType 字体，请安装 Fandol 或 Noto CJK 后重试。
+
+## 说明
+
+不生成文件输入输出、样例文件、目录、编译选项等 OJ 不存在的内容。
+`;
+
+const BUILD_SH = `#!/usr/bin/env sh
+set -eu
+xelatex -shell-escape -interaction=nonstopmode main.tex
+xelatex -shell-escape -interaction=nonstopmode main.tex
+`;
+
+const BUILD_BAT = `@echo off
+setlocal
+xelatex -shell-escape -interaction=nonstopmode main.tex
+if errorlevel 1 exit /b 1
+xelatex -shell-escape -interaction=nonstopmode main.tex
+if errorlevel 1 exit /b 1
+`;
+
+const LATEXMKRC = `$pdf_mode = 5;
+$xelatex = 'xelatex -shell-escape %O %S';
+$max_repeat = 5;
+`;
+
+function imageExtension(contentType) {
+  const type = String(contentType || '').toLowerCase().split(';', 1)[0].trim();
+  if (type === 'image/png') return 'png';
+  if (type === 'image/jpeg' || type === 'image/jpg') return 'jpg';
+  throw new Error(`不支持的图片格式：${contentType || '未知'}。`);
+}
+
+function assertBytes(bytes) {
+  if (bytes instanceof Uint8Array) return bytes;
+  if (bytes instanceof ArrayBuffer) return new Uint8Array(bytes);
+  throw new Error('图片内容格式不正确。');
+}
+
+async function createLatexProject(statement, options = {}) {
+  if (typeof options.templateClass !== 'string' || !options.templateClass.trim()) throw new Error('缺少题面 LaTeX 模板。');
+  if (typeof options.fetchImage !== 'function') throw new Error('缺少图片读取函数。');
+  const converted = statementToLatex(statement, {normalizeMath: options.normalizeMath});
+  const files = [
+    {name: 'main.tex', data: converted.tex},
+    {name: 'oicontest.cls', data: options.templateClass},
+    {name: 'README.md', data: README},
+    {name: 'build.sh', data: BUILD_SH},
+    {name: 'build.bat', data: BUILD_BAT},
+    {name: 'latexmkrc', data: LATEXMKRC}
+  ];
+  let total = files.reduce((size, file) => size + new TextEncoder().encode(file.data).length, 0);
+  for (const [index, image] of converted.images.entries()) {
+    if (options.signal?.aborted) throw new DOMException('已取消导出。', 'AbortError');
+    let result;
+    try {
+      result = await options.fetchImage(image.url, {signal: options.signal});
+      const bytes = assertBytes(result?.bytes);
+      if (!bytes.length) throw new Error(`图片为空：${image.url}`);
+      if (bytes.length > IMAGE_MAX) throw new Error(`图片超过 10 MB：${image.url}`);
+      total += bytes.length;
+      if (total > IMAGE_SIZE) throw new Error('图片总大小超过 25 MB，未导出。');
+      const extension = imageExtension(result.contentType);
+      files.push({name: `images/${image.index}.${extension}`, data: bytes});
+    } catch (error) {
+      if (error.name === 'AbortError') throw error;
+      throw new Error(`${image.problem}：${error.message}`);
+    }
+    if (options.onProgress) options.onProgress({index: index + 1, total: converted.images.length, image});
+  }
+  if (options.signal?.aborted) throw new DOMException('已取消导出。', 'AbortError');
+  if (converted.warnings.length) files.push({name: 'warnings.txt', data: converted.warnings.join('\n') + '\n'});
+  const bytes = createStoredZip(files);
+  return {
+    filename: `${safeFilename(statement.title)}-LaTeX.zip`,
+    blob: new Blob([bytes], {type: 'application/zip'}),
+    warnings: converted.warnings
+  };
+}
+
+function downloadBlob(blob, filename) {
+  const link = document.createElement('a'), url = URL.createObjectURL(blob);
+  link.href = url; link.download = filename;
+  document.body.append(link); link.click(); link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function imageType(bytes) {
+  if (bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return 'image/png';
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'image/jpeg';
+  return '';
+}
+
+async function canvasPng(bytes, type) {
+  const blob = new Blob([bytes], {type: type || 'application/octet-stream'});
+  let source;
+  try {
+    source = await createImageBitmap(blob);
+  } catch {
+    throw new Error('图片无法解码，可能是损坏的图片或当前浏览器不支持该格式。');
+  }
+  const scale = Math.min(1, 2000 / Math.max(source.width, source.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(source.width * scale));
+  canvas.height = Math.max(1, Math.round(source.height * scale));
+  const context = canvas.getContext('2d');
+  context.fillStyle = '#fff'; context.fillRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(source, 0, 0, canvas.width, canvas.height);
+  source.close?.();
+  const result = await new Promise((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error('图片转换失败。')), 'image/png'));
+  return {bytes: new Uint8Array(await result.arrayBuffer()), contentType: 'image/png'};
+}
+
+function decodeDataUrl(url) {
+  const match = /^data:([^;,]*)?((?:;[^,]*)*?),(.*)$/is.exec(url);
+  if (!match) throw new Error('图片 data URL 格式不正确。');
+  const contentType = (match[1] || 'application/octet-stream').trim();
+  const metadata = match[2] || '', body = match[3];
+  if (/;base64/i.test(metadata)) {
+    const binary = atob(body.replace(/\s+/g, ''));
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return {bytes, contentType};
+  }
+  return {bytes: new TextEncoder().encode(decodeURIComponent(body)), contentType};
+}
+
+async function fetchStatementImage(rawUrl, {signal} = {}) {
+  const url = String(rawUrl || '').trim();
+  if (!url) throw new Error('题面图片缺少地址。');
+  if (/^data:/i.test(url)) {
+    const result = decodeDataUrl(url);
+    if (result.bytes.length > 10 * 1024 * 1024) throw new Error('图片超过 10 MB。');
+    return result.contentType === 'image/png' || result.contentType === 'image/jpeg'
+      ? result : canvasPng(result.bytes, result.contentType);
+  }
+  let target;
+  try { target = new URL(url, location.href); } catch { throw new Error(`图片地址无效：${url}`); }
+  if (!['http:', 'https:'].includes(target.protocol)) throw new Error(`不支持的图片协议：${url}`);
+  if (target.origin === location.origin) target.pathname = accodingPath(target.pathname);
+  const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 20000);
+  const abort = () => controller.abort();
+  if (signal) {
+    if (signal.aborted) controller.abort();
+    else signal.addEventListener('abort', abort, {once: true});
+  }
+  try {
+    const response = await fetch(target.href, {credentials: 'same-origin', cache: 'no-store', signal: controller.signal});
+    if (!response.ok) throw new Error(`图片读取失败（HTTP ${response.status}）：${url}`);
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (!bytes.length) throw new Error(`图片为空：${url}`);
+    if (bytes.length > 10 * 1024 * 1024) throw new Error(`图片超过 10 MB：${url}`);
+    const declared = (response.headers.get('content-type') || '').split(';', 1)[0].trim().toLowerCase();
+    const detected = imageType(bytes);
+    if (detected === 'image/png' || detected === 'image/jpeg') return {bytes, contentType: detected};
+    if (declared === 'image/svg+xml' || declared === 'image/gif' || declared === 'image/webp' || declared.startsWith('image/')) {
+      return canvasPng(bytes, declared);
+    }
+    throw new Error(`不支持的图片格式（${declared || '未知'}）：${url}`);
+  } catch (error) {
+    if (error.name === 'AbortError') throw new DOMException('已取消导出。', 'AbortError');
+    throw error;
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener('abort', abort);
+  }
+}
+
+function createExportDialog() {
+  const dialog = document.createElement('dialog');
+  dialog.style.cssText = 'width:min(680px,94vw);max-height:86vh;padding:0;border:1px solid #ccd7e6;border-radius:12px;background:#fff;color:#20314a';
+  const heading = document.createElement('h2');
+  heading.textContent = '导出 Statement LaTeX 工程';
+  heading.style.cssText = 'margin:0;padding:18px 22px;font-size:18px;border-bottom:1px solid #e3eaf3';
+  const body = document.createElement('div');
+  body.style.cssText = 'padding:18px 22px;line-height:1.7';
+  const status = document.createElement('p');
+  status.textContent = '正在读取本场比赛题面…';
+  status.setAttribute('role', 'status');
+  status.setAttribute('aria-live', 'polite');
+  const progress = document.createElement('progress');
+  progress.max = 1; progress.value = 0;
+  progress.style.cssText = 'display:none;width:100%;height:10px;margin:12px 0';
+  const download = document.createElement('button');
+  download.type = 'button'; download.textContent = '下载 ZIP'; download.disabled = true;
+  download.style.cssText = 'padding:8px 14px;margin:4px 8px 0 0;border:1px solid #2458d3;border-radius:7px;background:#2458d3;color:#fff;cursor:pointer';
+  const close = document.createElement('button');
+  close.type = 'button'; close.textContent = '关闭';
+  close.style.cssText = 'padding:8px 14px;margin-top:4px;border:1px solid #cbd7e6;border-radius:7px;background:#fff;color:#334862;cursor:pointer';
+  const actions = document.createElement('div');
+  actions.append(download, close);
+  body.append(status, progress, actions);
+  dialog.append(heading, body);
+  close.onclick = () => dialog.close();
+  return {dialog, status, progress, download};
 }
 
 function mountStatementExport(Core) {
-  const root=document.getElementById('am-upsolve-activation')?.shadowRoot;
-  if(!root)return;
-  const action=document.createElement('button');action.type='button';action.className='statement-export';action.textContent='一键导出 Statement';action.title='汇编本场全部题面，编译公式并保存为 PDF';root.querySelector('.launch').append(action);
-  const status=document.createElement('span');status.className='hint';status.setAttribute('role','status');status.setAttribute('aria-live','polite');root.querySelector('.launch').append(status);
-  const id=()=>ACCODING_APP_PATHNAME.match(/^\/contest\/(\d+)(?:\/(?:index)?)?$/)?.[1]||location.hash.match(/^#\/(\d+)(?:\/|$)/)?.[1];
-  action.addEventListener('click',async()=>{
-    if(action.disabled)return;
-    const progress=text=>{status.textContent=text;action.title=text;};
-    const dialog=document.createElement('dialog');
-    dialog.style.cssText='width:min(1000px,95vw);height:92vh;max-width:95vw;max-height:95vh;padding:0;border:1px solid #ccd7e6;border-radius:10px;background:white;overflow:hidden';
-    const close=document.createElement('button');close.type='button';close.textContent='关闭 Statement';close.style.cssText='display:block;margin:8px 12px;padding:6px 12px;cursor:pointer';
-    const frame=document.createElement('iframe');frame.title='Statement PDF 预览';frame.style.cssText='display:block;width:100%;height:calc(100% - 52px);border:0;background:white';
-    dialog.append(close,frame);document.body.append(dialog);dialog.showModal();
-    close.onclick=()=>dialog.close();dialog.addEventListener('close',()=>dialog.remove(),{once:true});
-    const view=frame.contentWindow;
-    const current=id();action.disabled=true;action.setAttribute('aria-busy','true');
-    view.document.body.textContent='正在读取本场比赛题面…';
-    try{
-      if(!pageWindow.markdown?.toHTML)throw new Error('题面渲染器尚未加载，请刷新页面重试。');
-      const value=await createUpsolveActivationIO().readContest(current);
-      if(current!==id())throw new Error('已切换比赛，导出已停止。');
-      await renderStatement(view,createStatementCore(Core).compile(value,current),()=>frame.isConnected&&current===id(),progress);
-    }catch(error){progress('导出失败：'+error.message);if(!view.closed){const notice=view.document.createElement('p');notice.textContent='导出失败：'+error.message;view.document.body.prepend(notice);}}
-    finally{action.disabled=false;action.removeAttribute('aria-busy');}
+  const root = document.getElementById('am-upsolve-activation')?.shadowRoot;
+  if (!root) return;
+  const action = document.createElement('button');
+  action.type = 'button'; action.className = 'statement-export'; action.textContent = '导出 Statement';
+  action.title = '汇编本场全部题面并导出可本地编译的 LaTeX 工程 ZIP';
+  root.querySelector('.launch').append(action);
+  const status = document.createElement('span');
+  status.className = 'hint';
+  status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
+  root.querySelector('.launch').append(status);
+  const id = () => ACCODING_APP_PATHNAME.match(/^\/contest\/(\d+)(?:\/(?:index)?)?$/)?.[1] || location.hash.match(/^#\/(\d+)(?:\/|$)/)?.[1];
+  action.addEventListener('click', async () => {
+    if (action.disabled) return;
+    const progressText = text => { status.textContent = text; action.title = text; };
+    const current = id();
+    if (!current) { progressText('无法识别当前比赛。'); return; }
+    const {dialog, status: dialogStatus, progress, download} = createExportDialog();
+    document.body.append(dialog);
+    let project = null;
+    const aborter = new AbortController();
+    const cleanup = () => {
+      aborter.abort();
+      dialog.remove();
+    };
+    dialog.addEventListener('close', cleanup, {once: true});
+    dialog.showModal();
+    action.disabled = true; action.setAttribute('aria-busy', 'true');
+    const setStatus = (text, value = null) => {
+      dialogStatus.textContent = text;
+      progressText(text);
+      if (value != null) { progress.value = value; progress.style.display = 'block'; }
+    };
+    try {
+      setStatus('正在读取本场比赛题面…');
+      const value = await createUpsolveActivationIO().readContest(current);
+      if (current !== id()) throw new Error('已切换比赛，导出已停止。');
+      const statement = createStatementCore(Core).compile(value, current);
+      setStatus('正在转换题面…');
+      project = await createLatexProject(statement, {
+        templateClass: ACCODING_OICONTEST_CLASS,
+        normalizeMath: createMarkdownCore().fromOJ,
+        signal: aborter.signal,
+        fetchImage: fetchStatementImage,
+        onProgress: ({index, total}) => setStatus(`正在收集图片 ${index}/${total}…`, total ? index / total : 0)
+      });
+      if (current !== id()) throw new Error('已切换比赛，导出已停止。');
+      if (aborter.signal.aborted) throw new DOMException('已取消导出。', 'AbortError');
+      download.disabled = false;
+      download.onclick = () => downloadBlob(project.blob, project.filename);
+      const warning = project.warnings.length ? `；${project.warnings.length} 处内容已降级为纯文本，详见 warnings.txt` : '';
+      setStatus(`已生成 ${project.filename}${warning}。`);
+      progress.value = 1;
+      download.click();
+    } catch (error) {
+      if (error.name !== 'AbortError') setStatus(`导出失败：${error.message}`);
+    } finally {
+      action.disabled = false; action.removeAttribute('aria-busy');
+    }
   });
 }
 
@@ -2028,6 +2637,7 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
 return XLSX;
 }
 
+
 // Local OOXML reader: shared strings, inline strings, cached formula values, multiple sheets.
 // No workbook bytes leave the browser. ZIP limits also bound decompression memory.
 async function readClassXlsx(file) {
@@ -2156,46 +2766,6 @@ function scoreSheetXml(matrix) {
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="${ref}"/><sheetData>${body}</sheetData></worksheet>`;
 }
 
-function crc32(bytes) {
-  let crc = 0xffffffff;
-  for (const byte of bytes) {
-    crc ^= byte;
-    for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
-  }
-  return (crc ^ 0xffffffff) >>> 0;
-}
-
-function u16(value) {
-  return Uint8Array.of(value & 255, (value >>> 8) & 255);
-}
-
-function u32(value) {
-  return Uint8Array.of(value & 255, (value >>> 8) & 255, (value >>> 16) & 255, (value >>> 24) & 255);
-}
-
-function joinBytes(parts) {
-  const result = new Uint8Array(parts.reduce((size, part) => size + part.length, 0));
-  let offset = 0;
-  for (const part of parts) { result.set(part, offset); offset += part.length; }
-  return result;
-}
-
-function zipStore(files) {
-  const encoder = new TextEncoder(), localParts = [], centralParts = [];
-  let offset = 0;
-  for (const file of files) {
-    const name = encoder.encode(file.name), data = typeof file.data === 'string' ? encoder.encode(file.data) : file.data;
-    const checksum = crc32(data), size = data.length;
-    const local = joinBytes([u32(0x04034b50), u16(20), u16(0x800), u16(0), u16(0), u16(33), u32(checksum), u32(size), u32(size), u16(name.length), u16(0), name, data]);
-    localParts.push(local);
-    const central = joinBytes([u32(0x02014b50), u16(20), u16(20), u16(0x800), u16(0), u16(0), u16(33), u32(checksum), u32(size), u32(size), u16(name.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(offset), name]);
-    centralParts.push(central);
-    offset += local.length;
-  }
-  const central = joinBytes(centralParts), locals = joinBytes(localParts);
-  return joinBytes([locals, central, u32(0x06054b50), u16(0), u16(0), u16(files.length), u16(files.length), u32(central.length), u32(locals.length), u16(0)]);
-}
-
 /** Create a minimal, dependency-free XLSX workbook as ZIP bytes. */
 function createClassScoreXlsx(matrix) {
   const sheet = scoreSheetXml(matrix);
@@ -2203,7 +2773,7 @@ function createClassScoreXlsx(matrix) {
   const rootRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`;
   const workbook = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="比赛成绩" sheetId="1" r:id="rId1"/></sheets></workbook>`;
   const workbookRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>`;
-  return zipStore([
+  return createStoredZip([
     {name: '[Content_Types].xml', data: contentTypes},
     {name: '_rels/.rels', data: rootRels},
     {name: 'xl/workbook.xml', data: workbook},
@@ -2244,7 +2814,7 @@ function createTextXlsx(sheets) {
     return {name: `xl/worksheets/sheet${index + 1}.xml`, data: `${declaration}<worksheet xmlns="${main}"><dimension ref="A1:${end}"/><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>${columns}</cols><sheetData>${data}</sheetData><autoFilter ref="A1:${end}"/></worksheet>`};
   });
   const styles = `${declaration}<styleSheet xmlns="${main}"><fonts count="2"><font><sz val="11"/></font><font><b/><color rgb="FFFFFFFF"/><sz val="11"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF254766"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment vertical="center"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="center"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
-  return zipStore([
+  return createStoredZip([
     {name: '[Content_Types].xml', data: `${declaration}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${sheets.map((_, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>`},
     {name: '_rels/.rels', data: `${declaration}<Relationships xmlns="${pkg}"><Relationship Id="rId1" Type="${rel}/officeDocument" Target="xl/workbook.xml"/></Relationships>`},
     {name: 'xl/workbook.xml', data: `${declaration}<workbook xmlns="${main}" xmlns:r="${rel}"><sheets>${sheets.map((sheet, i) => `<sheet name="${xmlEscape(sheet.name)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join('')}</sheets></workbook>`},

@@ -1,9 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createContestCore} from '../src/contest-core.mjs';
-import {createStatementCore,statementCoverTable,statementPageRules} from '../src/statement-core.mjs';
+import {createStatementCore} from '../src/statement-core.mjs';
 import {readFile} from 'node:fs/promises';
-import vm from 'node:vm';
 
 const service=createStatementCore(createContestCore());
 const fixture=()=>({id:1329,title:'C5 - 2026级程序设计基础第五次上机赛',start_time:'2026-10-20T11:00:00Z',end_time:'2026-10-20T13:00:00Z',problems:[
@@ -28,38 +27,11 @@ test('statement exposes the contest title, Beijing date, problem headings and OJ
     ['A 第一题','1000 ms','65536 KB'],
     ['B 第二题','3000 ms','131072 KB']
   ]);
+  assert.ok(!/文件名|目录|可执行|测试点|等分|编译选项|下发文件/.test(JSON.stringify(out)));
 });
 test('statement dates cross the Beijing day boundary as a range',()=>{
   const raw=fixture();raw.start_time='2026-10-20T20:00:00Z';raw.end_time='2026-10-21T20:00:00Z';
   assert.equal(service.compile(raw,1329).dateText,'2026 年 10 月 21 日 — 2026 年 10 月 22 日');
-});
-test('cover puts each problem number and name on one row without template file rows',()=>{
-  const out=service.compile(fixture(),1329),table=statementCoverTable(out);
-  assert.deepEqual(table.columns,['题号','题目名称','时间限制','空间限制']);
-  assert.deepEqual(table.rows,[
-    ['A','第一题','1000 ms','65536 KB'],
-    ['B','第二题','3000 ms','131072 KB']
-  ]);
-  assert.ok(!/文件名|目录|可执行|测试点|等分|编译选项|下发文件/.test(JSON.stringify(table)));
-});
-test('page rules name every problem and escape CSS content strings',()=>{
-  const raw=fixture();raw.title='C5 - 引号"与\\反斜杠';
-  const css=statementPageRules(service.compile(raw,1329));
-  assert.match(css,/@page\{size:A4;margin:25mm/);
-  assert.match(css,/@page cover/);
-  assert.match(css,/@page p0\{@top-right\{content:"A 第一题"/);
-  assert.match(css,/@page p1\{@top-right\{content:"B 第二题"/);
-  assert.match(css,/counter\(page\)/);
-  assert.match(css,/counter\(pages\)/);
-  assert.ok(css.includes('\u00a0\u00a0\u00a0\u00a0'));
-  assert.match(css,/@top-center\{content:"";width:100%;margin-top:54pt;border-top:0\.2pt solid #000\}/);
-  assert.match(css,/@page cover\{@top-left\{content:none\}@top-right\{content:none\}@top-center\{content:none;border-top:none\}/);
-  assert.ok(css.includes('引号\\"与\\\\反斜杠'));
-});
-test('statement stylesheet keeps the OI template typography',async()=>{
-  const css=await readFile(new URL('../src/statement.css',import.meta.url),'utf8');
-  for(const token of ['SimSun','SimHei','Consolas','line-height:1.565','text-emphasis:dot','font-synthesis:none','page-break-before:always','margin:3pt 0 3pt 14pt','@media print'])assert.ok(css.includes(token),token);
-  assert.match(css,/\.problem-title\{[^}]*font-weight:400/);
 });
 test('statement reads numeric and string limits from decoded or JSON test settings',()=>{
   for(const encode of [value=>value,JSON.stringify,value=>JSON.stringify(JSON.stringify(value))]){
@@ -92,33 +64,22 @@ test('missing descriptions, empty contests, and mismatched identity fail before 
 });
 
 const exportSource=await readFile(new URL('../src/statement-export.js',import.meta.url),'utf8');
-test('statement reuses the page MathJax and typesets each problem separately',()=>{
-  assert.match(exportSource,/pageMath=pageWindow\.MathJax/);
-  assert.match(exportSource,/copyPageMathStyles\(doc\)/);
-  assert.match(exportSource,/pageMath\.Hub\.Queue/);
-  assert.match(exportSource,/am-statement-source-body/);
-  assert.ok(!exportSource.includes('ACCODING_MATHJAX_SOURCE'));
-  assert.ok(!exportSource.includes('view.eval'));
-  assert.match(exportSource,/页面 MathJax 未就绪/);
-  assert.match(exportSource,/公式编译超时/);
-  assert.match(exportSource,/正在复用页面公式/);
-  assert.match(exportSource,/60000/);
-  assert.match(exportSource,/function clearLazyFontRanges/);
-  assert.match(exportSource,/typeof font!=='object'/);
-  assert.match(exportSource,/MathJax_HTML/);
-  assert.match(exportSource,/printWithReminder/);
-  assert.match(exportSource,/更多设置/);
-  assert.match(exportSource,/题面公式未能渲染/);
+test('statement UI exports a LaTeX project and no longer prints HTML',async()=>{
+  assert.match(exportSource,/createLatexProject/);
+  assert.match(exportSource,/ACCODING_OICONTEST_CLASS/);
+  assert.match(exportSource,/fetchStatementImage/);
+  const texSource=await readFile(new URL('../src/statement-tex.mjs',import.meta.url),'utf8');
+  assert.match(texSource,/createStoredZip/);
+  assert.match(exportSource,/导出 Statement/);
+  assert.doesNotMatch(exportSource,/printStatement|view\.print|MathJax|ACCODING_STATEMENT_CSS|statementPageRules/);
 });
-for(const outcome of ['afterprint','close','throw'])test('PDF filename uses the contest title and restores the page after '+outcome,()=>{
-  const owner={title:'管理页面'},dialog=new EventTarget(),view=new EventTarget();
-  Object.assign(view,{parent:{document:owner},frameElement:{closest:()=>dialog},focus(){},print(){
-    assert.equal(owner.title,'C5-Statement');
-    if(outcome==='throw')throw new Error('打印失败');
-  }});
-  const context=vm.createContext({view});vm.runInContext(exportSource,context);
-  const print=()=>vm.runInContext("printStatement(view,'C5-Statement')",context);
-  if(outcome==='throw')assert.throws(print,/打印失败/);
-  else{print();assert.equal(owner.title,'C5-Statement');(outcome==='close'?dialog:view).dispatchEvent(new Event(outcome));}
-  assert.equal(owner.title,'管理页面');
+test('bundled LaTeX class keeps the template style and has font fallbacks',async()=>{
+  const source=await readFile(new URL('../src/oicontest.cls',import.meta.url),'utf8');
+  for(const token of ['\\LoadClass[a4paper,12pt]{ctexart}','\\RequirePackage{minted}','\\pageref{LastPage}',
+    '\\IfFontExistsTF{SimSun}','FandolSong-Regular.otf','FandolHei-Regular.otf','\\setCJKmainfont','\\setmonofont'])assert.ok(source.includes(token),token);
+  assert.match(source,/\\fancyfoot\[C\]\{[^}]*\\pageref\{LastPage\}[^}]*\}/s);
+  assert.ok(!source.includes('\\color{blue} \\pageref{LastPage}'));
+});
+test('old HTML statement stylesheet is removed',async()=>{
+  await assert.rejects(readFile(new URL('../src/statement.css',import.meta.url),'utf8'),/ENOENT/);
 });
