@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Accoding Modern · 北航 OJ 管理界面
 // @namespace    local.accoding.modern
-// @version      1.25.1
+// @version      1.25.2
 // @description  界面美化、教学工作台、按题筛选通过提交、页内代码复核、独立补题排行榜与提交查看、赛事统计看板、Markdown 兼容编辑与批量测试点选择，保留原站登录和操作。
 // @include      https://accoding.buaa.edu.cn:4000/*
 // @include      https://accoding-4000.e1.buaa.edu.cn/*
@@ -23,7 +23,7 @@
 
 (() => {
 'use strict';
-const ACCODING_MODERN_VERSION="1.25.1";
+const ACCODING_MODERN_VERSION="1.25.2";
 // Runtime URL compatibility for the direct site and BUAA VPN reverse proxy.
 // The VPN keeps the upstream app under /https-4000/<opaque-token>/, so absolute
 // root requests and pathname checks must be evaluated relative to that prefix.
@@ -817,13 +817,25 @@ function clearLazyFontRanges(math) {
   return true;
 }
 
+// HTML-CSS output lives in the page's MathJax styles. Copy those into the
+// preview iframe so the copied formulas keep their fonts and metrics.
+function copyPageMathStyles(doc) {
+  for(const node of document.querySelectorAll('style,link[rel="stylesheet"]')){
+    const id=node.id||'',text=node.textContent||'';
+    if(!/^MathJax/.test(id)&&!/MathJax|MJX_|mjx-/.test(text.slice(0,20000))&&!(node.tagName==='LINK'&&/MathJax/i.test(node.href||'')))continue;
+    const copy=doc.importNode(node,true);
+    copy.setAttribute('data-am-math-style','');
+    doc.head.append(copy);
+  }
+}
+
 // The LaTeX class adds the underdot to CJK bold text only; Latin bold stays plain.
 function emphasizeStatementCjk(root) {
   const doc=root.ownerDocument,walker=doc.createTreeWalker(root,4),nodes=[];
   while(walker.nextNode()){
     const node=walker.currentNode,parent=node.parentElement;
     if(!parent||!parent.closest('strong,b')||parent.closest('.cjk-emphasis'))continue;
-    if(parent.closest('pre,code,script,style,textarea,svg,.MathJax,.MathJax_SVG,.MathJax_CHTML,mjx-container'))continue;
+    if(parent.closest('pre,code,script,style,textarea,svg,.MathJax,.MathJax_SVG,.MathJax_CHTML,.MathJax_HTML,.MathJax_MathML,mjx-container'))continue;
     if(/[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]/.test(node.nodeValue||''))nodes.push(node);
   }
   for(const node of nodes){
@@ -896,6 +908,32 @@ async function renderStatement(view, statement, isCurrent, onProgress) {
       const section=buildStatementProblem(doc,p);section.style.setProperty('page',`p${index}`);main.append(section);
     }
     progress('正在编译公式与加载图片…');
+    const bodies=[...main.querySelectorAll('.markdown-body')];
+    const pageMath=pageWindow.MathJax;
+    if(pageMath?.Hub?.Queue){
+      clearLazyFontRanges(pageMath);
+      // Reuse the MathJax already running on the OJ page. Typeset a hidden copy
+      // in the page, then move the rendered formulas into the print iframe.
+      const source=document.createElement('div');
+      source.style.cssText='position:absolute;left:-100000px;top:0;width:160mm;font-family:"SimSun",serif;font-size:12pt;line-height:1.565';
+      const clones=bodies.map(body=>{
+        const clone=document.importNode(body,true);
+        clone.classList.remove('markdown-body');clone.classList.add('am-statement-source-body');
+        source.append(clone);return clone;
+      });
+      document.body.append(source);
+      try{
+        for(const [index,clone] of clones.entries()){
+          progress(`正在复用页面公式 ${index+1}/${clones.length}…`);
+          await new Promise((resolve,reject)=>{
+            const timeout=setTimeout(()=>reject(new Error(`公式编译超时（${statement.problems[index]?.heading||`第 ${index+1} 题`}），请重试。`)),60000);
+            pageMath.Hub.Queue(['Typeset',pageMath.Hub,clone],()=>{clearTimeout(timeout);resolve();});
+          });
+        }
+        copyPageMathStyles(doc);
+        bodies.forEach((body,index)=>{body.innerHTML=clones[index].innerHTML;});
+      }finally{source.remove();}
+    }else{
     // MathJax sizes SVG output in ex units. SimSun's x-height is larger than
     // the TeX math font's, which otherwise scales formulas up and looks bold.
     const mathConfig={root:'https://accoding-mathjax.invalid',skipStartupTypeset:true,showMathMenu:false,messageStyle:'none',jax:['input/TeX','output/SVG'],extensions:[],menuSettings:{renderer:'SVG',locale:'en'},tex2jax:{inlineMath:[['$','$'],['\\(','\\)']],displayMath:[['$$','$$'],['\\[','\\]']],processEscapes:true},SVG:{font:'TeX',scale:80,useGlobalCache:false}};
@@ -924,13 +962,13 @@ async function renderStatement(view, statement, isCurrent, onProgress) {
     try{math.Hub.Register.StartupHook('End',clearRanges);}catch{}
     // Typeset one problem at a time. A whole-contest queue could exceed the old
     // 20-second limit on contests with many formulas, and gives no progress.
-    const bodies=[...main.querySelectorAll('.markdown-body')];
     for(const [index,body] of bodies.entries()){
       progress(`正在编译公式 ${index+1}/${bodies.length}…`);
       await new Promise((resolve,reject)=>{
         const timeout=setTimeout(()=>reject(new Error(`公式编译超时（${statement.problems[index]?.heading||`第 ${index+1} 题`}），请重试。`)),60000);
         math.Hub.Queue(clearRanges,['Typeset',math.Hub,body],()=>{clearTimeout(timeout);resolve();});
       });
+    }
     }
     emphasizeStatementCjk(main);
     const failed=[];
@@ -943,7 +981,7 @@ async function renderStatement(view, statement, isCurrent, onProgress) {
     if(main.querySelector('.MathJax_Error'))throw new Error('题面中存在无法编译的公式，请检查后重试。');
     // Never print a silently broken statement when the OJ page's MathJax did not run.
     const mathText=[...main.querySelectorAll('.markdown-body p,.markdown-body li,.markdown-body td,.markdown-body th,.markdown-body h1,.markdown-body h2,.markdown-body h3')].some(node=>/\$[^$\n]+\$|\\\(|\\\[/.test(node.textContent));
-    if(mathText&&!main.querySelector('.MathJax_SVG,.MathJax_CHTML,mjx-container'))throw new Error('题面公式未能渲染，请刷新页面后重试。');
+    if(mathText&&!main.querySelector('.MathJax_SVG,.MathJax_CHTML,.MathJax_HTML,.MathJax_MathML,mjx-container'))throw new Error('题面公式未能渲染，请刷新页面后重试。');
     progress('排版完成。在打印窗口选择“另存为 PDF”，并关闭浏览器的“页眉和页脚”。');
     print.disabled=false;print.onclick=()=>printStatement(view,statement.title);printStatement(view,statement.title);
   }catch(error){progress('导出失败：'+error.message);throw error;}

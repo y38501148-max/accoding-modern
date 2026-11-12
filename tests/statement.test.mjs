@@ -97,6 +97,9 @@ test('statement loads MathJax inside the preview iframe and typesets each proble
   assert.match(exportSource,/const mathBootstrap=`MathJax=\$\{JSON\.stringify\(mathConfig\)\}/);
   assert.match(exportSource,/mathScript\.textContent=mathBootstrap/);
   assert.match(exportSource,/view\.Function\(mathBootstrap\)/);
+  assert.match(exportSource,/copyPageMathStyles\(doc\)/);
+  assert.match(exportSource,/pageMath\.Hub\.Queue/);
+  assert.match(exportSource,/am-statement-source-body/);
   assert.match(exportSource,/waitForMath/);
   assert.ok(!exportSource.includes('view.eval(ACCODING_MATHJAX_SOURCE)'));
   assert.match(exportSource,/MathJax 未能在预览页初始化/);
