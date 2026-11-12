@@ -126,15 +126,6 @@ async function renderStatement(view, statement, isCurrent, onProgress) {
     // Keep the bundled renderer offline, including glyph paths, on VPN routes.
     view.eval(ACCODING_MATHJAX_SOURCE);
     const math=view.MathJax;
-    await new Promise((resolve,reject)=>{
-      const timeout=setTimeout(()=>reject(new Error('公式引擎启动超时，请重试。')),20000);
-      math.Hub.Queue(()=>{
-        // All SVG glyph tables are already bundled. Stale lazy-load ranges in
-        // 2.7.7 otherwise fail when a formula uses CJK or a fallback symbol.
-        for(const font of Object.values(math.OutputJax.SVG.FONTDATA.FONTS))if(typeof font==='object')delete font.Ranges;
-        clearTimeout(timeout);resolve();
-      });
-    });
     // Typeset one problem at a time. A whole-contest queue could exceed the old
     // 20-second limit on contests with many formulas, and gives no progress.
     const bodies=[...main.querySelectorAll('.markdown-body')];
@@ -142,7 +133,12 @@ async function renderStatement(view, statement, isCurrent, onProgress) {
       progress(`正在编译公式 ${index+1}/${bodies.length}…`);
       await new Promise((resolve,reject)=>{
         const timeout=setTimeout(()=>reject(new Error(`公式编译超时（${statement.problems[index]?.heading||`第 ${index+1} 题`}），请重试。`)),60000);
-        math.Hub.Queue(['Typeset',math.Hub,body],()=>{clearTimeout(timeout);resolve();});
+        math.Hub.Queue(()=>{
+          // All SVG glyph tables are already bundled. Stale lazy-load ranges in
+          // 2.7.7 otherwise fail when a formula uses CJK or a fallback symbol.
+          // Some font map entries can be null while MathJax is starting up.
+          try{for(const font of Object.values(math.OutputJax?.SVG?.FONTDATA?.FONTS||{}))if(font&&typeof font==='object')delete font.Ranges;}catch{}
+        },['Typeset',math.Hub,body],()=>{clearTimeout(timeout);resolve();});
       });
     }
     emphasizeStatementCjk(main);
