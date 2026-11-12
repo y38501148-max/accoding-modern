@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Accoding Modern · 北航 OJ 管理界面
 // @namespace    local.accoding.modern
-// @version      1.24.11
+// @version      1.25.0
 // @description  界面美化、教学工作台、按题筛选通过提交、页内代码复核、独立补题排行榜与提交查看、赛事统计看板、Markdown 兼容编辑与批量测试点选择，保留原站登录和操作。
 // @include      https://accoding.buaa.edu.cn:4000/*
 // @include      https://accoding-4000.e1.buaa.edu.cn/*
@@ -23,7 +23,7 @@
 
 (() => {
 'use strict';
-const ACCODING_MODERN_VERSION="1.24.11";
+const ACCODING_MODERN_VERSION="1.25.0";
 // Runtime URL compatibility for the direct site and BUAA VPN reverse proxy.
 // The VPN keeps the upstream app under /https-4000/<opaque-token>/, so absolute
 // root requests and pathname checks must be evaluated relative to that prefix.
@@ -690,6 +690,48 @@ function mountUpsolveActivation(Core) {
 }
 
 mountUpsolveActivation(createContestCore());
+const ACCODING_STATEMENT_CSS="/* Statement PDF styling, adapted from the oicontest LaTeX class. */\n*{box-sizing:border-box}\n:root{\n  --statement-serif:\"Latin Modern Roman\",\"Times New Roman\",\"SimSun\",\"Songti SC\",\"Noto Serif CJK SC\",serif;\n  --statement-sans:\"Times New Roman\",\"SimHei\",\"Heiti SC\",\"Noto Sans CJK SC\",sans-serif;\n  --statement-mono:Consolas,\"SFMono-Regular\",Menlo,\"Noto Sans Mono CJK SC\",monospace;\n  --statement-blue:#0000ff;\n}\nhtml,body{margin:0;padding:0}\nbody{background:#eef1f5;color:#000;font-family:var(--statement-serif);font-size:12pt;line-height:1.565;text-align:justify}\n.toolbar{position:sticky;top:0;z-index:2;padding:14px 20px;background:#edf3ff;border-bottom:1px solid #ccd7e6;font:14px/1.6 sans-serif}\n.toolbar button{font:inherit;padding:7px 14px;margin-right:12px;cursor:pointer}\n.toolbar [role=status]{white-space:pre-wrap}\nmain{width:210mm;max-width:calc(100vw - 32px);min-height:297mm;margin:24px auto;padding:25mm;background:#fff;box-shadow:0 4px 18px #1834531a}\n.cover{padding-top:8pt;padding-bottom:24px;margin-bottom:24px;border-bottom:1px solid #d8dee8;page:cover;break-after:page}\n.cover-title{margin:0;text-align:center;font-family:var(--statement-sans);font-size:24.88pt;font-weight:700;line-height:1.35;overflow-wrap:anywhere}\n.cover-date{margin:24pt 0 0;text-align:center;font-family:var(--statement-sans);font-size:14.4pt;line-height:1.4}\n.cover-table{width:100%;margin:22pt auto 0;border-collapse:collapse;table-layout:fixed;font-size:10pt;line-height:1.45}\n.cover-table col:first-child{width:22%}\n.cover-table th,.cover-table td{padding:3pt 6pt;border:0.4pt solid #000;text-align:center;vertical-align:middle;font-weight:400;overflow-wrap:anywhere}\n.cover-table th[scope=row]{text-align:left;white-space:nowrap}\n.cover-table.compact{font-size:8.5pt;line-height:1.35}\n.cover-table.compact th,.cover-table.compact td{padding:2pt 4pt}\n.problem{padding-top:16px;margin-top:24px;border-top:1px solid #d8dee8;break-before:page}\n.problem-title{margin:10pt 0 14pt;text-align:center;font-family:var(--statement-sans);font-size:17.28pt;font-weight:700;line-height:1.3;overflow-wrap:anywhere;break-after:avoid;page-break-after:avoid}\n.markdown-body{font-family:var(--statement-serif);font-size:12pt;line-height:1.565;text-align:justify}\n.markdown-body p{margin:0;text-indent:2em;orphans:2;widows:2;overflow-wrap:anywhere}\n.markdown-body p:has(>img:only-child),.markdown-body p:has(>a>img:only-child){text-indent:0;text-align:center}\n.markdown-body h1,.markdown-body h2{margin:10pt 0 8pt;text-align:left;font-family:var(--statement-sans);font-size:13pt;font-weight:700;line-height:1.3;break-after:avoid;page-break-after:avoid}\n.markdown-body h1.oic-brackets::before,.markdown-body h2.oic-brackets::before{content:\"【\"}\n.markdown-body h1.oic-brackets::after,.markdown-body h2.oic-brackets::after{content:\"】\"}\n.markdown-body h3,.markdown-body h4,.markdown-body h5,.markdown-body h6{margin:8pt 0 4pt;text-align:left;font-family:var(--statement-sans);font-size:12pt;font-weight:700;line-height:1.35;break-after:avoid;page-break-after:avoid}\n.markdown-body strong,.markdown-body b{font-family:var(--statement-sans);font-weight:700}\n.cjk-emphasis{text-emphasis:dot;text-emphasis-position:under right;-webkit-text-emphasis:dot;-webkit-text-emphasis-position:under right;text-emphasis-color:#000}\n.markdown-body ul,.markdown-body ol{margin:0;padding-left:3em}\n.markdown-body li{margin:0;padding:0}\n.markdown-body li>p,.markdown-body blockquote p,.markdown-body td p,.markdown-body th p{text-indent:0}\n.markdown-body blockquote{margin:0 0 0 2em;padding:0;border:0;color:inherit}\n.markdown-body hr{margin:10pt 0;border:0;border-top:0.4pt solid #000}\n.markdown-body a{color:var(--statement-blue);text-decoration:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}\n.markdown-body img{max-width:100%;height:auto;break-inside:avoid;page-break-inside:avoid}\n.markdown-body figure{margin:10pt 0;text-align:center;break-inside:avoid;page-break-inside:avoid}\n.markdown-body :not(pre)>code,.markdown-body kbd{padding:0;border:0;background:none;color:inherit;font-family:var(--statement-mono);font-size:0.92em;line-height:1.4;overflow-wrap:anywhere}\n.markdown-body pre{margin:3pt 0;padding:4pt 8pt 4pt 0;border:0.6pt solid var(--statement-blue);background:#fff;color:#000;font-family:var(--statement-mono);font-size:10.5pt;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;tab-size:4;break-inside:avoid;page-break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}\n.markdown-body pre code{display:block;padding-left:22pt;background:none;color:inherit;font:inherit;white-space:inherit}\n.markdown-body .code-line{position:relative;display:block;min-height:1.5em;white-space:pre-wrap;overflow-wrap:anywhere}\n.markdown-body .code-line::before{position:absolute;left:-22pt;width:12pt;text-align:right;color:#808080;content:attr(data-line);font-family:var(--statement-mono);font-size:9pt;line-height:1.5}\n.markdown-body table{width:auto;max-width:100%;margin:12pt auto;border-collapse:collapse;border-top:2pt solid #000;border-bottom:2pt solid #000;font-size:10.5pt;line-height:1.45;break-inside:auto;page-break-inside:auto}\n.markdown-body thead{display:table-header-group}\n.markdown-body th,.markdown-body td{padding:3pt 8pt;border:0;border-left:0.4pt solid #000;text-align:center;vertical-align:middle;font-weight:400;overflow-wrap:anywhere}\n.markdown-body th:first-child,.markdown-body td:first-child{border-left:0}\n.markdown-body thead th{border-bottom:1.2pt solid #000}\n.markdown-body tbody tr+tr>th,.markdown-body tbody tr+tr>td{border-top:0.4pt solid #000}\n.markdown-body table.compact{font-size:9pt;line-height:1.35}\n.markdown-body table.compact th,.markdown-body table.compact td{padding:2pt 5pt}\n.markdown-body .MathJax_SVG_Display{margin:0.6em 0;text-align:center;overflow:visible!important}\n.markdown-body svg{max-width:100%}\n#MathJax_Message{display:none!important}\n@media screen and (max-width:900px){main{padding:10mm}}\n@media print{\n  body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}\n  main{width:auto;max-width:none;min-height:0;margin:0;padding:0;background:#fff;box-shadow:none}\n  .toolbar{display:none!important}\n  .cover{margin:0;padding-bottom:0;border:0}\n  .problem{margin:0;padding:0;border:0}\n  a{text-decoration:none}\n}\n";
+function statementDateParts(time) {
+  const parts = new Intl.DateTimeFormat('en-US', {timeZone: 'Asia/Shanghai', year: 'numeric', month: 'numeric', day: 'numeric'}).formatToParts(new Date(time));
+  const value = type => parts.find(part => part.type === type)?.value || '';
+  return {year: value('year'), month: value('month'), day: value('day')};
+}
+
+function statementDateRange(start, end) {
+  const from = statementDateParts(start), to = statementDateParts(end);
+  const first = `${from.year} 年 ${from.month} 月 ${from.day} 日`;
+  return from.year === to.year && from.month === to.month && from.day === to.day
+    ? first
+    : `${first} — ${to.year} 年 ${to.month} 月 ${to.day} 日`;
+}
+
+function cssString(value) {
+  return '"' + String(value)
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/[\n\r\f]+/g, ' ') + '"';
+}
+
+const statementPageFont = '"Times New Roman","SimSun","Songti SC","Noto Serif CJK SC",serif';
+
+function statementCoverRows(statement) {
+  return [
+    {label: '题目名称', values: statement.problems.map(problem => problem.heading)},
+    {label: '时间限制', values: statement.problems.map(problem => problem.timeLimitText)},
+    {label: '空间限制', values: statement.problems.map(problem => problem.memoryLimitText)}
+  ];
+}
+
+function statementPageRules(statement) {
+  const header = `width:50%;vertical-align:top;padding-top:41pt;font-family:${statementPageFont};font-size:10pt;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis`;
+  const footer = `font-family:${statementPageFont};font-size:10pt;line-height:1.2;color:#000;vertical-align:middle`;
+  return [
+    `@page{size:A4;margin:25mm;@top-left{content:${cssString(statement.contestTitle)};${header}}@top-right{content:"";${header};text-align:right}@top-center{content:"";width:100%;margin-top:54pt;border-top:0.2pt solid #000}@bottom-center{content:"第 " counter(page) " 页\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0共 " counter(pages) " 页";${footer}}}`,
+    '@page cover{@top-left{content:none}@top-right{content:none}@top-center{content:none;border-top:none}@bottom-center{content:none}}',
+    ...statement.problems.map((problem, index) => `@page p${index}{@top-right{content:${cssString(problem.heading)};}}`)
+  ].join('\n');
+}
+
 function createStatementCore(Core) {
   function compile(value, id) {
     const raw=Core.decode(value),contest=Core.normalizeContest(raw);
@@ -697,6 +739,7 @@ function createStatementCore(Core) {
     if(!contest.problems.length)throw new Error('本场比赛没有题目。');
     const name=contest.title.split(/[-－–—]/,1)[0].trim();
     const title=`${name}-Statement`;
+    const contestTitle=String(contest.title).trim()||'未命名赛事';
     const originals=new Map(raw.problems.map(p=>[String(p.id),p]));
     const problems=contest.problems.map(p=>{
       const original=originals.get(p.id),description=original.description;
@@ -709,9 +752,13 @@ function createStatementCore(Core) {
         if(!['string','number'].includes(typeof value)||!/^\d+$/.test(String(value).trim())||!Number.isSafeInteger(Number(value))||Number(value)<=0)throw new Error(`${p.label} 题${name}缺失或无效，未导出。`);
         limits[key]=Number(value);
       }
-      return {...p,description,...limits};
+      const problemTitle=String(p.title).trim()||'未命名题目';
+      return {...p,title:problemTitle,description,...limits,
+        heading:`${p.label} ${problemTitle}`,
+        timeLimitText:`${limits.timeLimit} ms`,
+        memoryLimitText:`${limits.memoryLimit} KB`};
     });
-    return {title,problems};
+    return {title,contestTitle,dateText:statementDateRange(contest.start,contest.end),problems};
   }
   return {compile};
 }
@@ -729,55 +776,113 @@ function printStatement(view, title) {
   try{view.focus();view.print();}catch(error){restore();throw error;}
 }
 
+function markStatementHeadings(root) {
+  for(const heading of root.querySelectorAll('h1,h2')){
+    const text=heading.textContent.trim();
+    if(!text||(text.startsWith('【')&&text.endsWith('】')))continue;
+    heading.classList.add('oic-brackets');
+  }
+}
+
+function markStatementCodeLines(root, doc) {
+  for(const pre of root.querySelectorAll('pre')){
+    const code=pre.querySelector(':scope > code');
+    if(!code||code.querySelector('.code-line'))continue;
+    const text=code.textContent.replace(/\r\n?/g,'\n');
+    if(!text)continue;
+    const lines=text.replace(/\n$/,'').split('\n');
+    code.textContent='';
+    for(let index=0;index<lines.length;index++){
+      const line=doc.createElement('span');
+      line.className='code-line';line.dataset.line=String(index+1);line.textContent=lines[index];
+      code.append(line);
+    }
+  }
+}
+
+function compactStatementTables(root) {
+  for(const table of root.querySelectorAll('table')){
+    if((table.rows[0]?.cells.length||0)>=7)table.classList.add('compact');
+  }
+}
+
+// The LaTeX class adds the underdot to CJK bold text only; Latin bold stays plain.
+function emphasizeStatementCjk(root) {
+  const doc=root.ownerDocument,walker=doc.createTreeWalker(root,4),nodes=[];
+  while(walker.nextNode()){
+    const node=walker.currentNode,parent=node.parentElement;
+    if(!parent||!parent.closest('strong,b')||parent.closest('.cjk-emphasis'))continue;
+    if(parent.closest('pre,code,script,style,textarea,svg,.MathJax,.MathJax_SVG,.MathJax_CHTML,mjx-container'))continue;
+    if(/[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]/.test(node.nodeValue||''))nodes.push(node);
+  }
+  for(const node of nodes){
+    const fragment=doc.createDocumentFragment();
+    for(const part of node.nodeValue.split(/([\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]+)/)){
+      if(!part)continue;
+      if(/^[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]+$/.test(part)){
+        const span=doc.createElement('span');span.className='cjk-emphasis';span.textContent=part;fragment.append(span);
+      }else fragment.append(doc.createTextNode(part));
+    }
+    node.replaceWith(fragment);
+  }
+}
+
+function buildStatementCover(doc, statement) {
+  const cover=doc.createElement('section');cover.className='cover';
+  const title=doc.createElement('h1');title.className='cover-title';title.textContent=statement.contestTitle;
+  const date=doc.createElement('p');date.className='cover-date';date.textContent=`时间：${statement.dateText}`;
+  const table=doc.createElement('table');table.className='cover-table';
+  if(statement.problems.length>8)table.classList.add('compact');
+  const columns=doc.createElement('colgroup');
+  for(let index=0;index<=statement.problems.length;index++)columns.append(doc.createElement('col'));
+  const body=doc.createElement('tbody');
+  for(const row of statementCoverRows(statement)){
+    const tr=doc.createElement('tr'),label=doc.createElement('th');
+    label.scope='row';label.textContent=row.label;tr.append(label);
+    for(const value of row.values){const cell=doc.createElement('td');cell.textContent=value;tr.append(cell);}
+    body.append(tr);
+  }
+  table.append(columns,body);cover.append(title,date,table);
+  return cover;
+}
+
+function buildStatementProblem(doc, problem) {
+  const section=doc.createElement('section');section.className='problem';
+  const heading=doc.createElement('h1');heading.className='problem-title';heading.textContent=problem.heading;section.append(heading);
+  const body=doc.createElement('div');body.className='markdown-body';
+  const parsed=new DOMParser().parseFromString(pageWindow.markdown.toHTML(problem.description,'Maruku'),'text/html');
+  parsed.querySelectorAll('script,iframe,object,embed,link,meta,base,style,form,input,button,textarea').forEach(n=>n.remove());
+  for(const node of parsed.body.querySelectorAll('*'))for(const attr of [...node.attributes]){
+    if(/^on/i.test(attr.name)||['srcdoc','srcset'].includes(attr.name))node.removeAttribute(attr.name);
+    if(['href','src','xlink:href'].includes(attr.name)){
+      if(attr.name==='src'&&node.tagName==='IMG'&&/^data:image\/(?:png|jpe?g|gif|webp);base64,/i.test(attr.value))continue;
+      const url=new URL(attr.value,location.href);
+      if(!['https:','http:'].includes(url.protocol))node.removeAttribute(attr.name);
+      else{if(url.origin===location.origin)url.pathname=accodingPath(url.pathname);node.setAttribute(attr.name,url.href);}
+    }
+  }
+  body.append(...[...parsed.body.childNodes].map(n=>doc.importNode(n,true)));
+  markStatementHeadings(body);markStatementCodeLines(body,doc);compactStatementTables(body);
+  section.append(body);return section;
+}
+
 async function renderStatement(view, statement, isCurrent, onProgress) {
   const doc=view.document;
   doc.open();doc.write('<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title></title></head><body></body></html>');doc.close();
   doc.title=statement.title;
-  const style=doc.createElement('style');style.textContent=`
-    @page{size:A4;margin:0}
-    *{box-sizing:border-box}body{margin:0;color:#111;background:white;font:11pt/1.65 "Noto Serif CJK SC","Songti SC","SimSun",serif}
-    main{max-width:176mm;margin:24px auto;padding:0 4mm}h1{text-align:center;font-size:20pt;line-height:1.4;margin:0 0 22px}header h1{font-size:24pt;margin:0 0 28px}
-    .problem-heading{break-inside:avoid;page-break-inside:avoid;break-after:avoid;page-break-after:avoid}.problem-heading h1{margin-bottom:8px}.problem-limits{display:flex;justify-content:center;flex-wrap:wrap;gap:4px 24px;margin:0 0 22px;font-size:10pt}
-    .problem+.problem{break-before:page;page-break-before:always}h2{font-size:15pt;margin:20px 0 8px}h3{font-size:12pt;margin:16px 0 6px}h1,h2,h3,h4{break-after:avoid;page-break-after:avoid}
-    p{margin:8px 0;overflow-wrap:anywhere}ul,ol{padding-left:2em}blockquote{margin:12px 0;padding:0 14px;border-left:3px solid #bbb;color:#444}
-    pre{white-space:pre-wrap;overflow-wrap:anywhere;tab-size:4;padding:10px 12px;border:1px solid #ddd;background:#f7f7f7;line-height:1.5}code{font:9pt/1.5 ui-monospace,"SFMono-Regular",Consolas,monospace}pre code{white-space:inherit}pre,table,figure,img{break-inside:avoid;page-break-inside:avoid}
-    img{max-width:100%;height:auto}table{width:100%;border-collapse:collapse}th,td{padding:6px 10px;border:1px solid #aaa}a{color:inherit;text-decoration:underline}svg{max-width:100%}.MathJax_SVG_Display{overflow:visible!important}
-    .print-sheet{border:0;break-inside:auto;page-break-inside:auto}.print-sheet>tbody>tr>td,.print-sheet>thead>tr>td,.print-sheet>tfoot>tr>td{padding:0;border:0;vertical-align:top}.print-sheet>thead,.print-sheet>tfoot{display:none}
-    .toolbar{position:sticky;top:0;padding:14px 20px;background:#edf3ff;border-bottom:1px solid #ccd7e6;font:14px/1.6 sans-serif}.toolbar button{font:inherit;padding:7px 14px;margin-right:12px;cursor:pointer}.toolbar [role=status]{white-space:pre-wrap}
-    #MathJax_Message{display:none!important}
-    @media print{main{max-width:none;margin:0;padding:0 17mm}.toolbar{display:none}a{text-decoration:none}.print-sheet>thead{display:table-header-group}.print-sheet>tfoot{display:table-footer-group}.print-sheet>thead>tr>td,.print-sheet>tfoot>tr>td{height:18mm}}
-  `;doc.head.append(style);
+  const style=doc.createElement('style');style.textContent=ACCODING_STATEMENT_CSS;doc.head.append(style);
+  const pageStyle=doc.createElement('style');pageStyle.textContent=statementPageRules(statement);doc.head.append(pageStyle);
   const toolbar=doc.createElement('div');toolbar.className='toolbar';
   const print=doc.createElement('button');print.textContent='保存为 PDF';print.disabled=true;
   const status=doc.createElement('span');status.setAttribute('role','status');status.setAttribute('aria-live','polite');toolbar.append(print,status);doc.body.append(toolbar);
   const progress=text=>{status.textContent=text;onProgress(text);};
   const current=()=>{if(view.closed)throw new Error('Statement 窗口已关闭。');if(!isCurrent())throw new Error('已切换比赛，导出已停止。');};
   try{
-    const main=doc.createElement('main'),header=doc.createElement('header'),title=doc.createElement('h1');title.textContent=statement.title;header.append(title);
-    // Repeated blank rows supply page margins without leaving room for the
-    // browser's automatic URL, date and title headers/footers.
-    const sheet=doc.createElement('table');sheet.className='print-sheet';sheet.innerHTML='<thead><tr><td></td></tr></thead><tbody><tr><td></td></tr></tbody><tfoot><tr><td></td></tr></tfoot>';
-    const content=sheet.tBodies[0].rows[0].cells[0];content.append(header);main.append(sheet);doc.body.append(main);
-    for(const p of statement.problems){
-      current();progress(`正在排版 ${p.label} 题…`);
-      const section=doc.createElement('section');section.className='problem';const heading=doc.createElement('h1');heading.textContent=`${p.label}  ${p.title}`;
-      const problemHeading=doc.createElement('div');problemHeading.className='problem-heading';
-      const limits=doc.createElement('p');limits.className='problem-limits';
-      for(const text of [`时间限制：${p.timeLimit} ms`,`空间限制：${p.memoryLimit} KB`]){const item=doc.createElement('span');item.textContent=text;limits.append(item);}
-      problemHeading.append(heading,limits);section.append(problemHeading);
-      const body=doc.createElement('div');body.className='markdown-body';
-      const parsed=new DOMParser().parseFromString(pageWindow.markdown.toHTML(p.description,'Maruku'),'text/html');
-      parsed.querySelectorAll('script,iframe,object,embed,link,meta,base,style,form,input,button,textarea').forEach(n=>n.remove());
-      for(const node of parsed.body.querySelectorAll('*'))for(const attr of [...node.attributes]){
-        if(/^on/i.test(attr.name)||['srcdoc','srcset'].includes(attr.name))node.removeAttribute(attr.name);
-        if(['href','src','xlink:href'].includes(attr.name)){
-          if(attr.name==='src'&&node.tagName==='IMG'&&/^data:image\/(?:png|jpe?g|gif|webp);base64,/i.test(attr.value))continue;
-          const url=new URL(attr.value,location.href);
-          if(!['https:','http:'].includes(url.protocol))node.removeAttribute(attr.name);
-          else{if(url.origin===location.origin)url.pathname=accodingPath(url.pathname);node.setAttribute(attr.name,url.href);}
-        }
-      }
-      body.append(...[...parsed.body.childNodes].map(n=>doc.importNode(n,true)));section.append(body);content.append(section);
+    const main=doc.createElement('main');
+    main.append(buildStatementCover(doc,statement));doc.body.append(main);
+    for(const [index,p] of statement.problems.entries()){
+      current();progress(`正在排版 ${p.heading}…`);
+      const section=buildStatementProblem(doc,p);section.style.setProperty('page',`p${index}`);main.append(section);
     }
     progress('正在编译公式与加载图片…');
     view.MathJax={root:'https://accoding-mathjax.invalid',skipStartupTypeset:true,showMathMenu:false,messageStyle:'none',jax:['input/TeX','output/SVG'],extensions:[],menuSettings:{renderer:'SVG',locale:'en'},tex2jax:{inlineMath:[['$','$'],['\\(','\\)']],displayMath:[['$$','$$'],['\\[','\\]']],processEscapes:true},SVG:{font:'TeX',useGlobalCache:false}};
@@ -790,7 +895,10 @@ async function renderStatement(view, statement, isCurrent, onProgress) {
         // All SVG glyph tables are already bundled. Stale lazy-load ranges in
         // 2.7.7 otherwise fail when a formula uses CJK or a fallback symbol.
         for(const font of Object.values(math.OutputJax.SVG.FONTDATA.FONTS))if(typeof font==='object')delete font.Ranges;
-      },['Typeset',math.Hub,main],()=>{clearTimeout(timeout);resolve();});
+      },['Typeset',math.Hub,main],()=>{
+        clearTimeout(timeout);
+        try{emphasizeStatementCjk(main);resolve();}catch(error){reject(error);}
+      });
     });
     const failed=[];
     await Promise.all([...main.querySelectorAll('img')].map(img=>new Promise(resolve=>{
@@ -800,7 +908,7 @@ async function renderStatement(view, statement, isCurrent, onProgress) {
     await doc.fonts.ready;current();
     if(failed.length)throw new Error(`${failed.length} 张图片加载失败，未打开打印。请检查题面图片后重试：\n${failed.join('\n')}`);
     if(main.querySelector('.MathJax_Error'))throw new Error('题面中存在无法编译的公式，请检查后重试。');
-    progress('排版完成。在打印窗口选择“另存为 PDF”。');
+    progress('排版完成。在打印窗口选择“另存为 PDF”，并关闭浏览器的“页眉和页脚”。');
     print.disabled=false;print.onclick=()=>printStatement(view,statement.title);printStatement(view,statement.title);
   }catch(error){progress('导出失败：'+error.message);throw error;}
 }

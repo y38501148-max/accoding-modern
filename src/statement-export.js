@@ -11,55 +11,113 @@ function printStatement(view, title) {
   try{view.focus();view.print();}catch(error){restore();throw error;}
 }
 
+function markStatementHeadings(root) {
+  for(const heading of root.querySelectorAll('h1,h2')){
+    const text=heading.textContent.trim();
+    if(!text||(text.startsWith('【')&&text.endsWith('】')))continue;
+    heading.classList.add('oic-brackets');
+  }
+}
+
+function markStatementCodeLines(root, doc) {
+  for(const pre of root.querySelectorAll('pre')){
+    const code=pre.querySelector(':scope > code');
+    if(!code||code.querySelector('.code-line'))continue;
+    const text=code.textContent.replace(/\r\n?/g,'\n');
+    if(!text)continue;
+    const lines=text.replace(/\n$/,'').split('\n');
+    code.textContent='';
+    for(let index=0;index<lines.length;index++){
+      const line=doc.createElement('span');
+      line.className='code-line';line.dataset.line=String(index+1);line.textContent=lines[index];
+      code.append(line);
+    }
+  }
+}
+
+function compactStatementTables(root) {
+  for(const table of root.querySelectorAll('table')){
+    if((table.rows[0]?.cells.length||0)>=7)table.classList.add('compact');
+  }
+}
+
+// The LaTeX class adds the underdot to CJK bold text only; Latin bold stays plain.
+function emphasizeStatementCjk(root) {
+  const doc=root.ownerDocument,walker=doc.createTreeWalker(root,4),nodes=[];
+  while(walker.nextNode()){
+    const node=walker.currentNode,parent=node.parentElement;
+    if(!parent||!parent.closest('strong,b')||parent.closest('.cjk-emphasis'))continue;
+    if(parent.closest('pre,code,script,style,textarea,svg,.MathJax,.MathJax_SVG,.MathJax_CHTML,mjx-container'))continue;
+    if(/[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]/.test(node.nodeValue||''))nodes.push(node);
+  }
+  for(const node of nodes){
+    const fragment=doc.createDocumentFragment();
+    for(const part of node.nodeValue.split(/([\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]+)/)){
+      if(!part)continue;
+      if(/^[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]+$/.test(part)){
+        const span=doc.createElement('span');span.className='cjk-emphasis';span.textContent=part;fragment.append(span);
+      }else fragment.append(doc.createTextNode(part));
+    }
+    node.replaceWith(fragment);
+  }
+}
+
+function buildStatementCover(doc, statement) {
+  const cover=doc.createElement('section');cover.className='cover';
+  const title=doc.createElement('h1');title.className='cover-title';title.textContent=statement.contestTitle;
+  const date=doc.createElement('p');date.className='cover-date';date.textContent=`时间：${statement.dateText}`;
+  const table=doc.createElement('table');table.className='cover-table';
+  if(statement.problems.length>8)table.classList.add('compact');
+  const columns=doc.createElement('colgroup');
+  for(let index=0;index<=statement.problems.length;index++)columns.append(doc.createElement('col'));
+  const body=doc.createElement('tbody');
+  for(const row of statementCoverRows(statement)){
+    const tr=doc.createElement('tr'),label=doc.createElement('th');
+    label.scope='row';label.textContent=row.label;tr.append(label);
+    for(const value of row.values){const cell=doc.createElement('td');cell.textContent=value;tr.append(cell);}
+    body.append(tr);
+  }
+  table.append(columns,body);cover.append(title,date,table);
+  return cover;
+}
+
+function buildStatementProblem(doc, problem) {
+  const section=doc.createElement('section');section.className='problem';
+  const heading=doc.createElement('h1');heading.className='problem-title';heading.textContent=problem.heading;section.append(heading);
+  const body=doc.createElement('div');body.className='markdown-body';
+  const parsed=new DOMParser().parseFromString(pageWindow.markdown.toHTML(problem.description,'Maruku'),'text/html');
+  parsed.querySelectorAll('script,iframe,object,embed,link,meta,base,style,form,input,button,textarea').forEach(n=>n.remove());
+  for(const node of parsed.body.querySelectorAll('*'))for(const attr of [...node.attributes]){
+    if(/^on/i.test(attr.name)||['srcdoc','srcset'].includes(attr.name))node.removeAttribute(attr.name);
+    if(['href','src','xlink:href'].includes(attr.name)){
+      if(attr.name==='src'&&node.tagName==='IMG'&&/^data:image\/(?:png|jpe?g|gif|webp);base64,/i.test(attr.value))continue;
+      const url=new URL(attr.value,location.href);
+      if(!['https:','http:'].includes(url.protocol))node.removeAttribute(attr.name);
+      else{if(url.origin===location.origin)url.pathname=accodingPath(url.pathname);node.setAttribute(attr.name,url.href);}
+    }
+  }
+  body.append(...[...parsed.body.childNodes].map(n=>doc.importNode(n,true)));
+  markStatementHeadings(body);markStatementCodeLines(body,doc);compactStatementTables(body);
+  section.append(body);return section;
+}
+
 async function renderStatement(view, statement, isCurrent, onProgress) {
   const doc=view.document;
   doc.open();doc.write('<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title></title></head><body></body></html>');doc.close();
   doc.title=statement.title;
-  const style=doc.createElement('style');style.textContent=`
-    @page{size:A4;margin:0}
-    *{box-sizing:border-box}body{margin:0;color:#111;background:white;font:11pt/1.65 "Noto Serif CJK SC","Songti SC","SimSun",serif}
-    main{max-width:176mm;margin:24px auto;padding:0 4mm}h1{text-align:center;font-size:20pt;line-height:1.4;margin:0 0 22px}header h1{font-size:24pt;margin:0 0 28px}
-    .problem-heading{break-inside:avoid;page-break-inside:avoid;break-after:avoid;page-break-after:avoid}.problem-heading h1{margin-bottom:8px}.problem-limits{display:flex;justify-content:center;flex-wrap:wrap;gap:4px 24px;margin:0 0 22px;font-size:10pt}
-    .problem+.problem{break-before:page;page-break-before:always}h2{font-size:15pt;margin:20px 0 8px}h3{font-size:12pt;margin:16px 0 6px}h1,h2,h3,h4{break-after:avoid;page-break-after:avoid}
-    p{margin:8px 0;overflow-wrap:anywhere}ul,ol{padding-left:2em}blockquote{margin:12px 0;padding:0 14px;border-left:3px solid #bbb;color:#444}
-    pre{white-space:pre-wrap;overflow-wrap:anywhere;tab-size:4;padding:10px 12px;border:1px solid #ddd;background:#f7f7f7;line-height:1.5}code{font:9pt/1.5 ui-monospace,"SFMono-Regular",Consolas,monospace}pre code{white-space:inherit}pre,table,figure,img{break-inside:avoid;page-break-inside:avoid}
-    img{max-width:100%;height:auto}table{width:100%;border-collapse:collapse}th,td{padding:6px 10px;border:1px solid #aaa}a{color:inherit;text-decoration:underline}svg{max-width:100%}.MathJax_SVG_Display{overflow:visible!important}
-    .print-sheet{border:0;break-inside:auto;page-break-inside:auto}.print-sheet>tbody>tr>td,.print-sheet>thead>tr>td,.print-sheet>tfoot>tr>td{padding:0;border:0;vertical-align:top}.print-sheet>thead,.print-sheet>tfoot{display:none}
-    .toolbar{position:sticky;top:0;padding:14px 20px;background:#edf3ff;border-bottom:1px solid #ccd7e6;font:14px/1.6 sans-serif}.toolbar button{font:inherit;padding:7px 14px;margin-right:12px;cursor:pointer}.toolbar [role=status]{white-space:pre-wrap}
-    #MathJax_Message{display:none!important}
-    @media print{main{max-width:none;margin:0;padding:0 17mm}.toolbar{display:none}a{text-decoration:none}.print-sheet>thead{display:table-header-group}.print-sheet>tfoot{display:table-footer-group}.print-sheet>thead>tr>td,.print-sheet>tfoot>tr>td{height:18mm}}
-  `;doc.head.append(style);
+  const style=doc.createElement('style');style.textContent=ACCODING_STATEMENT_CSS;doc.head.append(style);
+  const pageStyle=doc.createElement('style');pageStyle.textContent=statementPageRules(statement);doc.head.append(pageStyle);
   const toolbar=doc.createElement('div');toolbar.className='toolbar';
   const print=doc.createElement('button');print.textContent='保存为 PDF';print.disabled=true;
   const status=doc.createElement('span');status.setAttribute('role','status');status.setAttribute('aria-live','polite');toolbar.append(print,status);doc.body.append(toolbar);
   const progress=text=>{status.textContent=text;onProgress(text);};
   const current=()=>{if(view.closed)throw new Error('Statement 窗口已关闭。');if(!isCurrent())throw new Error('已切换比赛，导出已停止。');};
   try{
-    const main=doc.createElement('main'),header=doc.createElement('header'),title=doc.createElement('h1');title.textContent=statement.title;header.append(title);
-    // Repeated blank rows supply page margins without leaving room for the
-    // browser's automatic URL, date and title headers/footers.
-    const sheet=doc.createElement('table');sheet.className='print-sheet';sheet.innerHTML='<thead><tr><td></td></tr></thead><tbody><tr><td></td></tr></tbody><tfoot><tr><td></td></tr></tfoot>';
-    const content=sheet.tBodies[0].rows[0].cells[0];content.append(header);main.append(sheet);doc.body.append(main);
-    for(const p of statement.problems){
-      current();progress(`正在排版 ${p.label} 题…`);
-      const section=doc.createElement('section');section.className='problem';const heading=doc.createElement('h1');heading.textContent=`${p.label}  ${p.title}`;
-      const problemHeading=doc.createElement('div');problemHeading.className='problem-heading';
-      const limits=doc.createElement('p');limits.className='problem-limits';
-      for(const text of [`时间限制：${p.timeLimit} ms`,`空间限制：${p.memoryLimit} KB`]){const item=doc.createElement('span');item.textContent=text;limits.append(item);}
-      problemHeading.append(heading,limits);section.append(problemHeading);
-      const body=doc.createElement('div');body.className='markdown-body';
-      const parsed=new DOMParser().parseFromString(pageWindow.markdown.toHTML(p.description,'Maruku'),'text/html');
-      parsed.querySelectorAll('script,iframe,object,embed,link,meta,base,style,form,input,button,textarea').forEach(n=>n.remove());
-      for(const node of parsed.body.querySelectorAll('*'))for(const attr of [...node.attributes]){
-        if(/^on/i.test(attr.name)||['srcdoc','srcset'].includes(attr.name))node.removeAttribute(attr.name);
-        if(['href','src','xlink:href'].includes(attr.name)){
-          if(attr.name==='src'&&node.tagName==='IMG'&&/^data:image\/(?:png|jpe?g|gif|webp);base64,/i.test(attr.value))continue;
-          const url=new URL(attr.value,location.href);
-          if(!['https:','http:'].includes(url.protocol))node.removeAttribute(attr.name);
-          else{if(url.origin===location.origin)url.pathname=accodingPath(url.pathname);node.setAttribute(attr.name,url.href);}
-        }
-      }
-      body.append(...[...parsed.body.childNodes].map(n=>doc.importNode(n,true)));section.append(body);content.append(section);
+    const main=doc.createElement('main');
+    main.append(buildStatementCover(doc,statement));doc.body.append(main);
+    for(const [index,p] of statement.problems.entries()){
+      current();progress(`正在排版 ${p.heading}…`);
+      const section=buildStatementProblem(doc,p);section.style.setProperty('page',`p${index}`);main.append(section);
     }
     progress('正在编译公式与加载图片…');
     view.MathJax={root:'https://accoding-mathjax.invalid',skipStartupTypeset:true,showMathMenu:false,messageStyle:'none',jax:['input/TeX','output/SVG'],extensions:[],menuSettings:{renderer:'SVG',locale:'en'},tex2jax:{inlineMath:[['$','$'],['\\(','\\)']],displayMath:[['$$','$$'],['\\[','\\]']],processEscapes:true},SVG:{font:'TeX',useGlobalCache:false}};
@@ -72,7 +130,10 @@ async function renderStatement(view, statement, isCurrent, onProgress) {
         // All SVG glyph tables are already bundled. Stale lazy-load ranges in
         // 2.7.7 otherwise fail when a formula uses CJK or a fallback symbol.
         for(const font of Object.values(math.OutputJax.SVG.FONTDATA.FONTS))if(typeof font==='object')delete font.Ranges;
-      },['Typeset',math.Hub,main],()=>{clearTimeout(timeout);resolve();});
+      },['Typeset',math.Hub,main],()=>{
+        clearTimeout(timeout);
+        try{emphasizeStatementCjk(main);resolve();}catch(error){reject(error);}
+      });
     });
     const failed=[];
     await Promise.all([...main.querySelectorAll('img')].map(img=>new Promise(resolve=>{
@@ -82,7 +143,7 @@ async function renderStatement(view, statement, isCurrent, onProgress) {
     await doc.fonts.ready;current();
     if(failed.length)throw new Error(`${failed.length} 张图片加载失败，未打开打印。请检查题面图片后重试：\n${failed.join('\n')}`);
     if(main.querySelector('.MathJax_Error'))throw new Error('题面中存在无法编译的公式，请检查后重试。');
-    progress('排版完成。在打印窗口选择“另存为 PDF”。');
+    progress('排版完成。在打印窗口选择“另存为 PDF”，并关闭浏览器的“页眉和页脚”。');
     print.disabled=false;print.onclick=()=>printStatement(view,statement.title);printStatement(view,statement.title);
   }catch(error){progress('导出失败：'+error.message);throw error;}
 }

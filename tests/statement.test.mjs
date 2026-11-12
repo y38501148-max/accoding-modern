@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createContestCore} from '../src/contest-core.mjs';
-import {createStatementCore} from '../src/statement-core.mjs';
+import {createStatementCore,statementCoverRows,statementPageRules} from '../src/statement-core.mjs';
 import {readFile} from 'node:fs/promises';
 import vm from 'node:vm';
 
@@ -19,6 +19,45 @@ test('statement uses contest order, matching titles, and preserves all source co
   assert.equal(out.problems[1].description,raw.problems[0].description);
   assert.equal(raw.problems[0].id,20);
   assert.deepEqual(out.problems.map(p=>[p.timeLimit,p.memoryLimit]),[[1000,65536],[3000,131072]]);
+});
+test('statement exposes the contest title, Beijing date, problem headings and OJ limits',()=>{
+  const out=service.compile(JSON.stringify(JSON.stringify(fixture())),1329);
+  assert.equal(out.contestTitle,'C5 - 2026级程序设计基础第五次上机赛');
+  assert.equal(out.dateText,'2026 年 10 月 20 日');
+  assert.deepEqual(out.problems.map(p=>[p.heading,p.timeLimitText,p.memoryLimitText]),[
+    ['A 第一题','1000 ms','65536 KB'],
+    ['B 第二题','3000 ms','131072 KB']
+  ]);
+});
+test('statement dates cross the Beijing day boundary as a range',()=>{
+  const raw=fixture();raw.start_time='2026-10-20T20:00:00Z';raw.end_time='2026-10-21T20:00:00Z';
+  assert.equal(service.compile(raw,1329).dateText,'2026 年 10 月 21 日 — 2026 年 10 月 22 日');
+});
+test('cover only contains OJ metadata and never template file or compile rows',()=>{
+  const out=service.compile(fixture(),1329),rows=statementCoverRows(out);
+  assert.deepEqual(rows.map(row=>row.label),['题目名称','时间限制','空间限制']);
+  assert.deepEqual(rows[0].values,['A 第一题','B 第二题']);
+  assert.deepEqual(rows[1].values,['1000 ms','3000 ms']);
+  assert.deepEqual(rows[2].values,['65536 KB','131072 KB']);
+  assert.ok(!/文件名|目录|可执行|测试点|等分|编译选项|下发文件/.test(JSON.stringify(rows)));
+});
+test('page rules name every problem and escape CSS content strings',()=>{
+  const raw=fixture();raw.title='C5 - 引号"与\\反斜杠';
+  const css=statementPageRules(service.compile(raw,1329));
+  assert.match(css,/@page\{size:A4;margin:25mm/);
+  assert.match(css,/@page cover/);
+  assert.match(css,/@page p0\{@top-right\{content:"A 第一题"/);
+  assert.match(css,/@page p1\{@top-right\{content:"B 第二题"/);
+  assert.match(css,/counter\(page\)/);
+  assert.match(css,/counter\(pages\)/);
+  assert.ok(css.includes('\u00a0\u00a0\u00a0\u00a0'));
+  assert.match(css,/@top-center\{content:"";width:100%;margin-top:54pt;border-top:0\.2pt solid #000\}/);
+  assert.match(css,/@page cover\{@top-left\{content:none\}@top-right\{content:none\}@top-center\{content:none;border-top:none\}/);
+  assert.ok(css.includes('引号\\"与\\\\反斜杠'));
+});
+test('statement stylesheet keeps the OI template typography',async()=>{
+  const css=await readFile(new URL('../src/statement.css',import.meta.url),'utf8');
+  for(const token of ['SimSun','SimHei','Consolas','line-height:1.565','text-emphasis:dot','@media print'])assert.ok(css.includes(token),token);
 });
 test('statement reads numeric and string limits from decoded or JSON test settings',()=>{
   for(const encode of [value=>value,JSON.stringify,value=>JSON.stringify(JSON.stringify(value))]){
