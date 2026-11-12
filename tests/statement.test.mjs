@@ -92,12 +92,18 @@ test('missing descriptions, empty contests, and mismatched identity fail before 
 });
 
 const exportSource=await readFile(new URL('../src/statement-export.js',import.meta.url),'utf8');
-test('statement calibrates MathJax, typesets each problem separately and refuses silently unrendered formulas',()=>{
+test('statement loads MathJax inside the preview iframe and typesets each problem separately',()=>{
   assert.match(exportSource,/SVG:\{font:'TeX',scale:80,useGlobalCache:false\}/);
+  assert.match(exportSource,/mathScript\.textContent=ACCODING_MATHJAX_SOURCE/);
+  assert.match(exportSource,/view\.Function\(ACCODING_MATHJAX_SOURCE\)/);
+  assert.ok(!exportSource.includes('view.eval(ACCODING_MATHJAX_SOURCE)'));
+  assert.match(exportSource,/MathJax 未能在预览页初始化/);
   assert.match(exportSource,/公式编译超时/);
   assert.match(exportSource,/正在编译公式/);
   assert.match(exportSource,/60000/);
-  assert.match(exportSource,/font&&typeof font==='object'/);
+  assert.match(exportSource,/function clearLazyFontRanges/);
+  assert.match(exportSource,/Register\.StartupHook\('End',clearRanges\)/);
+  assert.match(exportSource,/typeof font!=='object'/);
   assert.match(exportSource,/题面公式未能渲染/);
 });
 for(const outcome of ['afterprint','close','throw'])test('PDF filename uses the contest title and restores the page after '+outcome,()=>{

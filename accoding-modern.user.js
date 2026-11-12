@@ -805,6 +805,18 @@ function compactStatementTables(root) {
   }
 }
 
+function clearLazyFontRanges(math) {
+  const fonts=math.OutputJax?.SVG?.FONTDATA?.FONTS;
+  if(!fonts)return false;
+  // All SVG glyph tables are bundled. Stale lazy-load ranges in 2.7.7 otherwise
+  // try to fetch CJK/fallback glyphs from the invalid offline root and hang.
+  for(const font of Object.values(fonts)){
+    if(!font||typeof font!=='object')continue;
+    try{delete font.Ranges;}catch{}
+  }
+  return true;
+}
+
 // The LaTeX class adds the underdot to CJK bold text only; Latin bold stays plain.
 function emphasizeStatementCjk(root) {
   const doc=root.ownerDocument,walker=doc.createTreeWalker(root,4),nodes=[];
@@ -888,8 +900,21 @@ async function renderStatement(view, statement, isCurrent, onProgress) {
     // the TeX math font's, which otherwise scales formulas up and looks bold.
     view.MathJax={root:'https://accoding-mathjax.invalid',skipStartupTypeset:true,showMathMenu:false,messageStyle:'none',jax:['input/TeX','output/SVG'],extensions:[],menuSettings:{renderer:'SVG',locale:'en'},tex2jax:{inlineMath:[['$','$'],['\\(','\\)']],displayMath:[['$$','$$'],['\\[','\\]']],processEscapes:true},SVG:{font:'TeX',scale:80,useGlobalCache:false}};
     // Keep the bundled renderer offline, including glyph paths, on VPN routes.
-    view.eval(ACCODING_MATHJAX_SOURCE);
+    // Run it inside the preview iframe. Calling view.eval from the userscript
+    // sandbox can resolve to the OJ page's existing HTML-CSS MathJax, which then
+    // tries to fetch from the invalid offline root and never finishes.
+    const mathScript=doc.createElement('script');
+    mathScript.textContent=ACCODING_MATHJAX_SOURCE;
+    doc.head.append(mathScript);
+    if(!view.MathJax?.Hub?.Queue){
+      // Some OJ pages block inline scripts through CSP but allow unsafe-eval.
+      // The Function constructor still executes in the preview iframe.
+      try{view.Function(ACCODING_MATHJAX_SOURCE).call(view);}catch{}
+    }
+    if(!view.MathJax?.Hub?.Queue)throw new Error('MathJax 未能在预览页初始化，请刷新页面后重试。');
     const math=view.MathJax;
+    const clearRanges=()=>clearLazyFontRanges(math);
+    try{math.Hub.Register.StartupHook('End',clearRanges);}catch{}
     // Typeset one problem at a time. A whole-contest queue could exceed the old
     // 20-second limit on contests with many formulas, and gives no progress.
     const bodies=[...main.querySelectorAll('.markdown-body')];
@@ -897,12 +922,7 @@ async function renderStatement(view, statement, isCurrent, onProgress) {
       progress(`正在编译公式 ${index+1}/${bodies.length}…`);
       await new Promise((resolve,reject)=>{
         const timeout=setTimeout(()=>reject(new Error(`公式编译超时（${statement.problems[index]?.heading||`第 ${index+1} 题`}），请重试。`)),60000);
-        math.Hub.Queue(()=>{
-          // All SVG glyph tables are already bundled. Stale lazy-load ranges in
-          // 2.7.7 otherwise fail when a formula uses CJK or a fallback symbol.
-          // Some font map entries can be null while MathJax is starting up.
-          try{for(const font of Object.values(math.OutputJax?.SVG?.FONTDATA?.FONTS||{}))if(font&&typeof font==='object')delete font.Ranges;}catch{}
-        },['Typeset',math.Hub,body],()=>{clearTimeout(timeout);resolve();});
+        math.Hub.Queue(clearRanges,['Typeset',math.Hub,body],()=>{clearTimeout(timeout);resolve();});
       });
     }
     emphasizeStatementCjk(main);
