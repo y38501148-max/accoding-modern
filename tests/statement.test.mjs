@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import {createContestCore} from '../src/contest-core.mjs';
 import {createStatementCore} from '../src/statement-core.mjs';
 import {readFile} from 'node:fs/promises';
-import vm from 'node:vm';
 
 const service=createStatementCore(createContestCore());
 const fixture=()=>({id:1329,title:'C5 - 2026级程序设计基础第五次上机赛',start_time:'2026-10-20T11:00:00Z',end_time:'2026-10-20T13:00:00Z',problems:[
@@ -19,6 +18,20 @@ test('statement uses contest order, matching titles, and preserves all source co
   assert.equal(out.problems[1].description,raw.problems[0].description);
   assert.equal(raw.problems[0].id,20);
   assert.deepEqual(out.problems.map(p=>[p.timeLimit,p.memoryLimit]),[[1000,65536],[3000,131072]]);
+});
+test('statement exposes the contest title, Beijing date, problem headings and OJ limits',()=>{
+  const out=service.compile(JSON.stringify(JSON.stringify(fixture())),1329);
+  assert.equal(out.contestTitle,'C5 - 2026级程序设计基础第五次上机赛');
+  assert.equal(out.dateText,'2026 年 10 月 20 日');
+  assert.deepEqual(out.problems.map(p=>[p.heading,p.timeLimitText,p.memoryLimitText]),[
+    ['A 第一题','1000 ms','65536 KB'],
+    ['B 第二题','3000 ms','131072 KB']
+  ]);
+  assert.ok(!/文件名|目录|可执行|测试点|等分|编译选项|下发文件/.test(JSON.stringify(out)));
+});
+test('statement dates cross the Beijing day boundary as a range',()=>{
+  const raw=fixture();raw.start_time='2026-10-20T20:00:00Z';raw.end_time='2026-10-21T20:00:00Z';
+  assert.equal(service.compile(raw,1329).dateText,'2026 年 10 月 21 日 — 2026 年 10 月 22 日');
 });
 test('statement reads numeric and string limits from decoded or JSON test settings',()=>{
   for(const encode of [value=>value,JSON.stringify,value=>JSON.stringify(JSON.stringify(value))]){
@@ -51,15 +64,22 @@ test('missing descriptions, empty contests, and mismatched identity fail before 
 });
 
 const exportSource=await readFile(new URL('../src/statement-export.js',import.meta.url),'utf8');
-for(const outcome of ['afterprint','close','throw'])test('PDF filename uses the contest title and restores the page after '+outcome,()=>{
-  const owner={title:'管理页面'},dialog=new EventTarget(),view=new EventTarget();
-  Object.assign(view,{parent:{document:owner},frameElement:{closest:()=>dialog},focus(){},print(){
-    assert.equal(owner.title,'C5-Statement');
-    if(outcome==='throw')throw new Error('打印失败');
-  }});
-  const context=vm.createContext({view});vm.runInContext(exportSource,context);
-  const print=()=>vm.runInContext("printStatement(view,'C5-Statement')",context);
-  if(outcome==='throw')assert.throws(print,/打印失败/);
-  else{print();assert.equal(owner.title,'C5-Statement');(outcome==='close'?dialog:view).dispatchEvent(new Event(outcome));}
-  assert.equal(owner.title,'管理页面');
+test('statement UI exports a LaTeX project and no longer prints HTML',async()=>{
+  assert.match(exportSource,/createLatexProject/);
+  assert.match(exportSource,/ACCODING_OICONTEST_CLASS/);
+  assert.match(exportSource,/fetchStatementImage/);
+  const texSource=await readFile(new URL('../src/statement-tex.mjs',import.meta.url),'utf8');
+  assert.match(texSource,/createStoredZip/);
+  assert.match(exportSource,/导出 Statement/);
+  assert.doesNotMatch(exportSource,/printStatement|view\.print|MathJax|ACCODING_STATEMENT_CSS|statementPageRules/);
+});
+test('bundled LaTeX class keeps the template style and has font fallbacks',async()=>{
+  const source=await readFile(new URL('../src/oicontest.cls',import.meta.url),'utf8');
+  for(const token of ['\\LoadClass[a4paper,12pt]{ctexart}','\\RequirePackage{minted}','\\pageref{LastPage}',
+    '\\IfFontExistsTF{SimSun}','FandolSong-Regular.otf','FandolHei-Regular.otf','\\setCJKmainfont','\\setmonofont'])assert.ok(source.includes(token),token);
+  assert.match(source,/\\fancyfoot\[C\]\{[^}]*\\pageref\{LastPage\}[^}]*\}/s);
+  assert.ok(!source.includes('\\color{blue} \\pageref{LastPage}'));
+});
+test('old HTML statement stylesheet is removed',async()=>{
+  await assert.rejects(readFile(new URL('../src/statement.css',import.meta.url),'utf8'),/ENOENT/);
 });
