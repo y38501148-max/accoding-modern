@@ -499,7 +499,7 @@ export function statementToLatex(statement, options = {}) {
 \title{${latexEscape(statement.contestTitle)}}
 \date{${latexEscape(statement.dateText)}}
 \setlength{\emergencystretch}{2em}
-\newcommand{\amproblem}[2]{\clearpage\section{#1\quad #2}}
+\newcommand{\amproblem}[2]{\clearpage\section{#1\qquad #2}}
 \begin{document}
 \thispagestyle{empty}
 \begin{center}

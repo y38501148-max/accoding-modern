@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Accoding Modern · 北航 OJ 管理界面
 // @namespace    local.accoding.modern
-// @version      1.26.1
+// @version      1.26.2
 // @description  界面美化、教学工作台、按题筛选通过提交、页内代码复核、独立补题排行榜与提交查看、赛事统计看板、Markdown 兼容编辑、Statement LaTeX 工程导出与批量测试点选择，保留原站登录和操作。
 // @include      https://accoding.buaa.edu.cn:4000/*
 // @include      https://accoding-4000.e1.buaa.edu.cn/*
@@ -23,7 +23,7 @@
 
 (() => {
 'use strict';
-const ACCODING_MODERN_VERSION="1.26.1";
+const ACCODING_MODERN_VERSION="1.26.2";
 // Runtime URL compatibility for the direct site and BUAA VPN reverse proxy.
 // The VPN keeps the upstream app under /https-4000/<opaque-token>/, so absolute
 // root requests and pathname checks must be evaluated relative to that prefix.
@@ -1285,7 +1285,7 @@ function statementToLatex(statement, options = {}) {
 \title{${latexEscape(statement.contestTitle)}}
 \date{${latexEscape(statement.dateText)}}
 \setlength{\emergencystretch}{2em}
-\newcommand{\amproblem}[2]{\clearpage\section{#1\quad #2}}
+\newcommand{\amproblem}[2]{\clearpage\section{#1\qquad #2}}
 \begin{document}
 \thispagestyle{empty}
 \begin{center}

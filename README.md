@@ -1,5 +1,7 @@
 # Accoding Modern
 
+1.26.2 将每题标题的题号与题目名间距从 `\quad` 增加到 `\qquad`，至少一个全角空格宽度。
+
 1.26.1 修复多道题包含图片时 ZIP 内图片编号重复、导出报“ZIP 文件名缺失或重复”的问题。
 
 1.26.0 Statement 导出改为生成可本地 XeLaTeX 编译的 LaTeX 工程 ZIP，并移除旧的 HTML 预览、Chrome 打印、页面 MathJax 排版和 `statement.css`。工程包含题面模板类、图片与编译脚本；不随包分发专有字体，自动回退到 Fandol/Noto。

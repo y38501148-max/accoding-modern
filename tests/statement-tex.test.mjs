@@ -62,7 +62,7 @@ test('statement document has the cover, problem order, page breaks and no file I
   assert.match(result.tex,/\\begin\{xltabular\}.*题号.*题目名称.*时间限制.*空间限制/s);
   assert.match(result.tex,/\nA & 第一题 & 1000 ms & 65536 KB/);
   assert.match(result.tex,/\nB & 第二题 & 2000 ms & 131072 KB/);
-  assert.match(result.tex,/\\newcommand\{\\amproblem\}\[2\]\{\\clearpage\\section\{#1\\quad #2\}\}/);
+  assert.match(result.tex,/\\newcommand\{\\amproblem\}\[2\]\{\\clearpage\\section\{#1\\qquad #2\}\}/);
   assert.match(result.tex,/\\amproblem\{A\}\{第一题\}/);
   assert.match(result.tex,/\\amproblem\{B\}\{第二题\}/);
   assert.ok(!/文件名|目录|可执行|测试点|等分|编译选项|下发文件/.test(result.tex));
