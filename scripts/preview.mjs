@@ -15,7 +15,7 @@ createServer(async(req,res)=>{
     if(url.pathname==='/accoding-modern.user.js'){file='accoding-modern.user.js';type='text/javascript';}
     else if(['/preview.js','/review-data.js','/preview-start.js'].includes(url.pathname)){file='preview'+url.pathname;type='text/javascript';}
     else if(url.pathname==='/preview.css'){file='preview/preview.css';type='text/css';}
-    else if(url.pathname.startsWith('/tests/')||url.pathname.startsWith('/src/')){
+    else if(url.pathname.startsWith('/tests/')||url.pathname.startsWith('/src/')||url.pathname.startsWith('/vendor/')){
       if(url.pathname.includes('..'))throw Error('Invalid path');
       file=url.pathname.slice(1);type=file.endsWith('.html')?'text/html':file.endsWith('.css')?'text/css':file.endsWith('.xls')?'application/vnd.ms-excel':'text/javascript';
     }else{file='preview/index.html';type='text/html';}

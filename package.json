@@ -1,6 +1,6 @@
 {
   "name": "accoding-modern",
-  "version": "1.25.0",
+  "version": "1.25.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,6 +10,7 @@
     "preview:peeker": "node scripts/peeker-preview.mjs",
     "test": "node --test tests/*.test.mjs",
     "check": "npm run build && node --check accoding-modern.user.js && npm test",
+    "check:pdf": "node scripts/check-pdf.mjs",
     "check:latex": "node scripts/check-latex.mjs"
   },
   "engines": {

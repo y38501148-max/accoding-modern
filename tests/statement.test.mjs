@@ -64,9 +64,9 @@ test('missing descriptions, empty contests, and mismatched identity fail before 
 });
 
 const exportSource=await readFile(new URL('../src/statement-export.js',import.meta.url),'utf8');
-test('statement UI exports a LaTeX project and no longer prints HTML',async()=>{
-  assert.match(exportSource,/createLatexProject/);
-  assert.match(exportSource,/ACCODING_OICONTEST_CLASS/);
+test('statement UI downloads PDF without a print dialog',async()=>{
+  assert.match(exportSource,/createStatementPdf/);
+  assert.match(exportSource,/下载 PDF/);
   assert.match(exportSource,/fetchStatementImage/);
   const texSource=await readFile(new URL('../src/statement-tex.mjs',import.meta.url),'utf8');
   assert.match(texSource,/createStoredZip/);

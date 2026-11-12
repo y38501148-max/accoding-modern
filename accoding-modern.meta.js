@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Accoding Modern · 北航 OJ 管理界面
 // @namespace    local.accoding.modern
-// @version      1.25.0
-// @description  界面美化、教学工作台、按题筛选通过提交、页内代码复核、独立补题排行榜与提交查看、赛事统计看板、Markdown 兼容编辑、Statement LaTeX 工程导出与批量测试点选择，保留原站登录和操作。
+// @version      1.25.1
+// @description  界面美化、教学工作台、按题筛选通过提交、页内代码复核、独立补题排行榜与提交查看、赛事统计看板、Markdown 兼容编辑、Statement PDF 直接下载与批量测试点选择，保留原站登录和操作。
 // @include      https://accoding.buaa.edu.cn:4000/*
 // @include      https://accoding-4000.e1.buaa.edu.cn/*
 // @include      https://accoding-4000.e2.buaa.edu.cn/*
@@ -15,6 +15,7 @@
 // @grant        GM_addValueChangeListener
 // @grant        unsafeWindow
 // @connect      muzermat.online
+// @connect      raw.githubusercontent.com
 // @homepageURL  https://github.com/y38501148-max/accoding-modern
 // @downloadURL  https://raw.githubusercontent.com/y38501148-max/accoding-modern/main/accoding-modern.user.js
 // @updateURL    https://raw.githubusercontent.com/y38501148-max/accoding-modern/main/accoding-modern.meta.js

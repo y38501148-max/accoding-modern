@@ -90,7 +90,7 @@ function createExportDialog() {
   const dialog = document.createElement('dialog');
   dialog.style.cssText = 'width:min(680px,94vw);max-height:86vh;padding:0;border:1px solid #ccd7e6;border-radius:12px;background:#fff;color:#20314a';
   const heading = document.createElement('h2');
-  heading.textContent = '导出 Statement LaTeX 工程';
+  heading.textContent = '导出 Statement PDF';
   heading.style.cssText = 'margin:0;padding:18px 22px;font-size:18px;border-bottom:1px solid #e3eaf3';
   const body = document.createElement('div');
   body.style.cssText = 'padding:18px 22px;line-height:1.7';
@@ -102,7 +102,7 @@ function createExportDialog() {
   progress.max = 1; progress.value = 0;
   progress.style.cssText = 'display:none;width:100%;height:10px;margin:12px 0';
   const download = document.createElement('button');
-  download.type = 'button'; download.textContent = '下载 ZIP'; download.disabled = true;
+  download.type = 'button'; download.textContent = '下载 PDF'; download.disabled = true;
   download.style.cssText = 'padding:8px 14px;margin:4px 8px 0 0;border:1px solid #2458d3;border-radius:7px;background:#2458d3;color:#fff;cursor:pointer';
   const close = document.createElement('button');
   close.type = 'button'; close.textContent = '关闭';
@@ -120,7 +120,7 @@ function mountStatementExport(Core) {
   if (!root) return;
   const action = document.createElement('button');
   action.type = 'button'; action.className = 'statement-export'; action.textContent = '导出 Statement';
-  action.title = '汇编本场全部题面并导出可本地编译的 LaTeX 工程 ZIP';
+  action.title = '按 OI 题面模板排版并直接下载 PDF';
   root.querySelector('.launch').append(action);
   const status = document.createElement('span');
   status.className = 'hint';
@@ -154,19 +154,15 @@ function mountStatementExport(Core) {
       if (current !== id()) throw new Error('已切换比赛，导出已停止。');
       const statement = createStatementCore(Core).compile(value, current);
       setStatus('正在转换题面…');
-      project = await createLatexProject(statement, {
-        templateClass: ACCODING_OICONTEST_CLASS,
-        normalizeMath: value => normalizeStatementMath(value, createMarkdownCore().fromOJ),
+      project = await createStatementPdf(statement, {
         signal: aborter.signal,
-        fetchImage: fetchStatementImage,
-        onProgress: ({index, total}) => setStatus(`正在收集图片 ${index}/${total}…`, total ? index / total : 0)
+        onProgress: text => setStatus(text)
       });
       if (current !== id()) throw new Error('已切换比赛，导出已停止。');
       if (aborter.signal.aborted) throw new DOMException('已取消导出。', 'AbortError');
       download.disabled = false;
       download.onclick = () => downloadBlob(project.blob, project.filename);
-      const warning = project.warnings.length ? `；${project.warnings.length} 处内容已降级为纯文本，详见 warnings.txt` : '';
-      setStatus(`已生成 ${project.filename}${warning}。`);
+      setStatus(`已生成 ${project.filename}。`);
       progress.value = 1;
       download.click();
     } catch (error) {

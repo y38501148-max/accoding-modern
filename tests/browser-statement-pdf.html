@@ -1,0 +1,18 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>Statement PDF regression</title><body>
+<button id="export">生成测试 PDF</button><output id="status">加载中</output>
+<script type="module">
+import {statementMathExtensions,collectStatementMath,statementPdfDefinition} from '/src/statement-pdf.mjs';
+import {normalizeStatementMath,safeFilename} from '/src/statement-tex.mjs';
+import {createMarkdownCore} from '/src/markdown-core.mjs';
+const [pdfmake,marked,mathjax,runtime,exporter]=await Promise.all(['/vendor/pdfmake/pdfmake.min.js','/vendor/marked/marked.umd.js','/vendor/mathjax2/mathjax-svg.js','/src/statement-pdf-browser.js','/src/statement-export.js'].map(url=>fetch(url).then(r=>r.text())));
+const cmMath=await fetch('/vendor/cm-math/glyphs.json').then(r=>r.json());
+const factory=new Function('ACCODING_CM_MATH','ACCODING_PDFMAKE_SOURCE','ACCODING_MARKED_SOURCE','ACCODING_MATHJAX_SOURCE','statementMathExtensions','collectStatementMath','statementPdfDefinition','normalizeStatementMath','safeFilename','createMarkdownCore','accodingPath',runtime+'\n'+exporter+'\nreturn createStatementPdf;');
+const createPdf=factory(cmMath,pdfmake,marked,mathjax,statementMathExtensions,collectStatementMath,statementPdfDefinition,normalizeStatementMath,safeFilename,createMarkdownCore,path=>path);
+const png='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+window.fixture={title:'C5-Statement',contestTitle:'C5 - 程序设计基础测试赛',dateText:'2026 年 11 月 12 日',problems:[
+{label:'A',title:'矩阵与图片',heading:'A 矩阵与图片',timeLimitText:'1000 ms',memoryLimitText:'65536 KB',description:'## 题目描述\n\n给定 $ x_i $ 和 **整数** $n$，求 $\\sum_{i=1}^{n} x_i$。这一段用于检查行内公式与中文保持在同一行。\n\n'.repeat(3)+'\n\n$$\n\\begin{bmatrix}\n  1 & 2 \\\\\n  3 & 4\n\\end{bmatrix}\n$$\n\n> 引用使用楷体，正文可选择和复制。\n\n- 第一项\n  - 嵌套条目\n- 第二项\n\n```cpp\nint main() {\n    // 中文注释\n    return 0;\n}\n```\n\n![示意图]('+png+')\n\n## 样例\n\n| 输入 | 输出 |\n|---|---|\n| 1 | 2 |'},
+{label:'B',title:'跨页表格',heading:'B 跨页表格',timeLimitText:'2000 ms',memoryLimitText:'131072 KB',description:'## 数据范围\n\n| 序号 | 内容 |\n|---|---|\n'+Array.from({length:65},(_,i)=>`| ${i+1} | 第 ${i+1} 行测试内容 |`).join('\n')+'\n\n结束标记：表格完整。'},
+{label:'C',title:'跨页代码',heading:'C 跨页代码',timeLimitText:'1000 ms',memoryLimitText:'65536 KB',description:'## 代码\n\n```text\n'+Array.from({length:90},(_,i)=>`    line_${i+1} = ${i+1};`).join('\n')+'\n```\n\n结束标记：代码完整。'}]};
+window.runPdf=async()=>{document.querySelector('#status').textContent='开始';try{const result=await createPdf(window.fixture,{onProgress:text=>document.querySelector('#status').textContent=text});window.result=result;window.pdfBase64=await new Promise(resolve=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result.split(',')[1]);reader.readAsDataURL(result.blob);});document.querySelector('#status').textContent=`完成 ${result.filename} ${result.blob.size}`;}catch(error){document.querySelector('#status').textContent='失败 '+(error.stack||error.message||String(error));}};
+document.querySelector('#export').onclick=window.runPdf;document.querySelector('#status').textContent='就绪';
+</script></body></html>

@@ -1,5 +1,7 @@
 # Accoding Modern
 
+1.25.1 Statement 按 OI 题面模板直接下载 PDF，无需打印窗口或本机 LaTeX。保留封面题表、逐题分页、页眉页脚、公式与代码框；普通公式使用 Computer Modern 字形，按 12pt 排版。
+
 1.25.0 Statement 导出改为生成可本地 XeLaTeX 编译的 LaTeX 工程 ZIP，移除旧的 HTML 预览、Chrome 打印、页面 MathJax 和 `statement.css`。修复多题图片编号、显示公式缩进矩阵被误判为代码块、普通 Markdown 的 `\\` 行分隔符被误转义、行内公式 `$ ... $` 内侧空格等问题；行内图片不再居中或放大，引用使用楷体，题号与题目名使用 `\quad` 间距。
 
 1.24.11 新增服务端预计算核查榜单：按人工 AI 次数及命中代码份数排序，每页 10 人，支持完整 XLSX 导出。修复小班班级显示，统计与操作按钮同行对齐。详见[核查说明](docs/ai-review.md)。
@@ -37,7 +39,7 @@ E 赛可在「教学工作台 → 比赛分析」直接导出成绩。未采集�
 | 补题工具 | 独立补题排行榜；已结束比赛可按原站权限一键开启补题。 |
 | 代码复核与查重 | 查看规则线索、前后代码差异和同题相似代码，保存助教结论与理由，导出复核结果。 |
 | 题目编辑 | Markdown 兼容预览、复制与保存；批量选择测试点并检查配对和文件重名。 |
-| Statement 导出 | 比赛工具「导出 Statement」，按题序汇编题面并生成可本地 XeLaTeX 编译的 LaTeX 工程 ZIP。 |
+| Statement 导出 | 比赛工具「导出 Statement」，按题序汇编题面，按 OI 模板直接下载 PDF。 |
 | VPN 公式 | 内置 MathJax 渲染器，修复 VPN 页面公式资源加载问题。 |
 
 ![赛事统计看板（模拟数据）](docs/contest-board-projection-preview.png)
@@ -50,7 +52,9 @@ E 赛可在「教学工作台 → 比赛分析」直接导出成绩。未采集�
 
 **批量测试点**：题目编辑 → 基本设置 → 批量添加测试点 → 选择多个文件或文件夹 → 检查预览 → 填入测试点 → 原站保存。ZIP 请先解压。按同名 `.in` 与 `.ans` / `.out` 配对，追加已有列表；缺失答案、重名或冲突会阻止填入，文件夹层级不会保留。已有测试点共享文件名时会警告并阻止相关删除，已损坏的服务端记录仍需后端修复。
 
-**Statement 导出**：在新旧比赛详情页的比赛工具中，点击「导出 Statement」。脚本读取本场全部题面，生成 `${比赛简称}-Statement-LaTeX.zip`，包含 `main.tex`、`oicontest.cls`、`images/`、`README.md` 和编译脚本。解压后在 TeX Live 中运行 `xelatex -shell-escape main.tex` 两次（或 `latexmk -xelatex main.tex`）即可得到模板风格 PDF：A4、2.5 cm 版心、宋体正文、黑体标题、封面题表、逐题换页、页眉比赛名与题名、页脚页码。不生成文件输入输出、样例文件、目录、编译选项和测试点等信息。代码块使用 minted，需要 Pygments；模板优先使用 SimSun/SimHei/Consolas，缺失时自动回退到 Fandol/Noto，ZIP 不包含专有字体。仅导出当前账号有权读取的题面；题面缺失、图片读取失败或图片过大时停止导出。
+**Statement 导出**：在新旧比赛详情页的比赛工具中点击「导出 Statement」，脚本读取本场全部题面，自动下载 `${比赛简称}-Statement.pdf`。PDF 使用 A4、2.5 cm 页边距、宋体正文、黑体标题、封面题表、逐题换页、比赛名与题名页眉、页码页脚。普通数学字母、数字和符号使用原版 Computer Modern 的矢量字形，字号为 12 TeX pt；其他数学变体和大运算符沿用 MathJax TeX 矢量字形。英文正文使用 Latin Modern，引用使用楷体，代码使用等宽字体。正文可选择和复制，公式以矢量图形保留。
+
+首次导出从本仓库下载开放字体，之后使用本机缓存；更新脚本时需接受对 `raw.githubusercontent.com` 的连接权限。题面和生成过程都在浏览器内处理，不向 PDF 服务上传。只读取当前账号有权访问的题面；题面缺失、公式错误或图片读取失败时停止导出。PDF 不生成 OJ 题面中没有的文件输入输出、目录、编译选项等内容。原有 LaTeX 转换模块保留用于开发校验，默认导出入口下载 PDF。
 
 **开启补题**：在已结束比赛的比赛工具中操作，将本组个人私有题目设为组内可见；跳过其他权限及被同组未结束比赛复用的题目。无法确认结束时间或复用情况时停止操作，完成后显示核验结果。
 
@@ -71,7 +75,7 @@ E 赛可在「教学工作台 → 比赛分析」直接导出成绩。未采集�
 
 ```bash
 npm run check        # 构建、产物语法检查与自动测试
-npm run check:latex  # 用本机 XeLaTeX 编译一份测试题面并校验 PDF
+npm run check:latex  # 校验保留的 LaTeX 转换模块（需本机 XeLaTeX）
 npm run preview      # 启动隔离的本地预览
 ```
 
@@ -88,3 +92,5 @@ npm run preview      # 启动隔离的本地预览
 ## 逐题过题曲线
 
 教学工作台的“比赛分析 → 逐题分析”支持在右上角选择题目，显示该题的累计过题曲线。按每位学生赛内首次 AC 统计，每分钟一个数据点、横轴每 10 分钟一个刻度；纵轴按当前题目人数自动调整。
+
+PDF 浏览器回归入口：`/tests/browser-statement-pdf.html`，包括行内公式、缩进矩阵、中文代码注释、图片、嵌套列表、跨页表格和长代码。将测试页生成的 PDF 保存后，可运行 `node scripts/check-pdf.mjs <PDF路径>` 校验内容、重复表头和总页数。字体来源和许可证见 `vendor/cm-math/README.md`、`vendor/statement-fonts/README`；重建 Computer Modern 字形表使用 `python3 scripts/build-cm-math.py`（需要 fonttools）。
