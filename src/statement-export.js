@@ -146,66 +146,29 @@ async function renderStatement(view, statement, isCurrent, onProgress) {
     progress('正在编译公式与加载图片…');
     const bodies=[...main.querySelectorAll('.markdown-body')];
     const pageMath=pageWindow.MathJax;
-    if(pageMath?.Hub?.Queue){
-      clearLazyFontRanges(pageMath);
-      // Reuse the MathJax already running on the OJ page. Typeset a hidden copy
-      // in the page, then move the rendered formulas into the print iframe.
-      const source=document.createElement('div');
-      source.style.cssText='position:absolute;left:-100000px;top:0;width:160mm;font-family:"SimSun",serif;font-size:12pt;line-height:1.565';
-      const clones=bodies.map(body=>{
-        const clone=document.importNode(body,true);
-        clone.classList.remove('markdown-body');clone.classList.add('am-statement-source-body');
-        source.append(clone);return clone;
-      });
-      document.body.append(source);
-      try{
-        for(const [index,clone] of clones.entries()){
-          progress(`正在复用页面公式 ${index+1}/${clones.length}…`);
-          await new Promise((resolve,reject)=>{
-            const timeout=setTimeout(()=>reject(new Error(`公式编译超时（${statement.problems[index]?.heading||`第 ${index+1} 题`}），请重试。`)),60000);
-            pageMath.Hub.Queue(['Typeset',pageMath.Hub,clone],()=>{clearTimeout(timeout);resolve();});
-          });
-        }
-        copyPageMathStyles(doc);
-        bodies.forEach((body,index)=>{body.innerHTML=clones[index].innerHTML;});
-      }finally{source.remove();}
-    }else{
-    // MathJax sizes SVG output in ex units. SimSun's x-height is larger than
-    // the TeX math font's, which otherwise scales formulas up and looks bold.
-    const mathConfig={root:'https://accoding-mathjax.invalid',skipStartupTypeset:true,showMathMenu:false,messageStyle:'none',jax:['input/TeX','output/SVG'],extensions:[],menuSettings:{renderer:'SVG',locale:'en'},tex2jax:{inlineMath:[['$','$'],['\\(','\\)']],displayMath:[['$$','$$'],['\\[','\\]']],processEscapes:true},SVG:{font:'TeX',scale:80,useGlobalCache:false}};
-    view.MathJax=mathConfig;
-    // Keep the bundled renderer offline, including glyph paths, on VPN routes.
-    // Put the config in the injected script as well: the userscript sandbox may
-    // not expose view.MathJax to the iframe realm, and the OJ page's existing
-    // HTML-CSS MathJax then wins and tries to fetch from the invalid root.
-    const mathBootstrap=`MathJax=${JSON.stringify(mathConfig)};\n${ACCODING_MATHJAX_SOURCE}`;
-    const mathScript=doc.createElement('script');
-    mathScript.textContent=mathBootstrap;
-    doc.head.append(mathScript);
-    const waitForMath=async()=>{
-      const deadline=Date.now()+3000;
-      while(!view.MathJax?.Hub?.Queue&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,50));
-      return view.MathJax?.Hub?.Queue;
-    };
-    if(!await waitForMath()){
-      // Some OJ pages block inline scripts through CSP but allow unsafe-eval.
-      // The Function constructor still executes in the preview iframe.
-      try{view.Function(mathBootstrap).call(view);}catch{}
-    }
-    if(!await waitForMath())throw new Error('MathJax 未能在预览页初始化，请刷新页面后重试。');
-    const math=view.MathJax;
-    const clearRanges=()=>clearLazyFontRanges(math);
-    try{math.Hub.Register.StartupHook('End',clearRanges);}catch{}
-    // Typeset one problem at a time. A whole-contest queue could exceed the old
-    // 20-second limit on contests with many formulas, and gives no progress.
-    for(const [index,body] of bodies.entries()){
-      progress(`正在编译公式 ${index+1}/${bodies.length}…`);
-      await new Promise((resolve,reject)=>{
-        const timeout=setTimeout(()=>reject(new Error(`公式编译超时（${statement.problems[index]?.heading||`第 ${index+1} 题`}），请重试。`)),60000);
-        math.Hub.Queue(clearRanges,['Typeset',math.Hub,body],()=>{clearTimeout(timeout);resolve();});
-      });
-    }
-    }
+    if(!pageMath?.Hub?.Queue)throw new Error('页面 MathJax 未就绪，请刷新页面后重试。');
+    clearLazyFontRanges(pageMath);
+    // Reuse the MathJax already running on the OJ page. Typeset a hidden copy
+    // in the page, then move the rendered formulas into the print iframe.
+    const source=document.createElement('div');
+    source.style.cssText='position:absolute;left:-100000px;top:0;width:160mm;font-family:"SimSun",serif;font-size:12pt;line-height:1.565';
+    const clones=bodies.map(body=>{
+      const clone=document.importNode(body,true);
+      clone.classList.remove('markdown-body');clone.classList.add('am-statement-source-body');
+      source.append(clone);return clone;
+    });
+    document.body.append(source);
+    try{
+      for(const [index,clone] of clones.entries()){
+        progress(`正在复用页面公式 ${index+1}/${clones.length}…`);
+        await new Promise((resolve,reject)=>{
+          const timeout=setTimeout(()=>reject(new Error(`公式编译超时（${statement.problems[index]?.heading||`第 ${index+1} 题`}），请重试。`)),60000);
+          pageMath.Hub.Queue(['Typeset',pageMath.Hub,clone],()=>{clearTimeout(timeout);resolve();});
+        });
+      }
+      copyPageMathStyles(doc);
+      bodies.forEach((body,index)=>{body.innerHTML=clones[index].innerHTML;});
+    }finally{source.remove();}
     emphasizeStatementCjk(main);
     const failed=[];
     await Promise.all([...main.querySelectorAll('img')].map(img=>new Promise(resolve=>{
@@ -219,7 +182,12 @@ async function renderStatement(view, statement, isCurrent, onProgress) {
     const mathText=[...main.querySelectorAll('.markdown-body p,.markdown-body li,.markdown-body td,.markdown-body th,.markdown-body h1,.markdown-body h2,.markdown-body h3')].some(node=>/\$[^$\n]+\$|\\\(|\\\[/.test(node.textContent));
     if(mathText&&!main.querySelector('.MathJax_SVG,.MathJax_CHTML,.MathJax_HTML,.MathJax_MathML,mjx-container'))throw new Error('题面公式未能渲染，请刷新页面后重试。');
     progress('排版完成。在打印窗口选择“另存为 PDF”，并关闭浏览器的“页眉和页脚”。');
-    print.disabled=false;print.onclick=()=>printStatement(view,statement.title);printStatement(view,statement.title);
+    const printWithReminder=()=>{
+      const message='打印窗口的“更多设置”中请取消勾选“页眉和页脚”，否则 PDF 会带上浏览器自带的日期、网址和页码。';
+      if(view.confirm&&!view.confirm(message))return;
+      printStatement(view,statement.title);
+    };
+    print.disabled=false;print.onclick=printWithReminder;printWithReminder();
   }catch(error){progress('导出失败：'+error.message);throw error;}
 }
 

@@ -1,5 +1,7 @@
 # Accoding Modern
 
+1.25.3 Statement 直接复用页面 MathJax 并移除预览 iframe 的备用加载代码；代码行号移入正文区避免裁切；打印前提示关闭浏览器自带的页眉页脚。
+
 1.25.2 直接复用 OJ 页面已加载的 MathJax 排版 Statement 公式；仅在页面没有 MathJax 时加载预览页内的备用渲染器，并保留逐题超时与字体清理。
 
 1.25.1 修复 Statement 导出公式加载：在预览 iframe 内使用 SVG MathJax，避免误用 OJ 页面的 HTML-CSS 配置；增强字体清理与错误提示。

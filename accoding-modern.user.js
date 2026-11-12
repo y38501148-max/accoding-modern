@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Accoding Modern · 北航 OJ 管理界面
 // @namespace    local.accoding.modern
-// @version      1.25.2
+// @version      1.25.3
 // @description  界面美化、教学工作台、按题筛选通过提交、页内代码复核、独立补题排行榜与提交查看、赛事统计看板、Markdown 兼容编辑与批量测试点选择，保留原站登录和操作。
 // @include      https://accoding.buaa.edu.cn:4000/*
 // @include      https://accoding-4000.e1.buaa.edu.cn/*
@@ -23,7 +23,7 @@
 
 (() => {
 'use strict';
-const ACCODING_MODERN_VERSION="1.25.2";
+const ACCODING_MODERN_VERSION="1.25.3";
 // Runtime URL compatibility for the direct site and BUAA VPN reverse proxy.
 // The VPN keeps the upstream app under /https-4000/<opaque-token>/, so absolute
 // root requests and pathname checks must be evaluated relative to that prefix.
@@ -690,7 +690,7 @@ function mountUpsolveActivation(Core) {
 }
 
 mountUpsolveActivation(createContestCore());
-const ACCODING_STATEMENT_CSS="/* Statement PDF styling, adapted from the oicontest LaTeX class. */\n*{box-sizing:border-box}\n:root{\n  --statement-serif:\"Latin Modern Roman\",\"Times New Roman\",\"SimSun\",\"Songti SC\",\"Noto Serif CJK SC\",serif;\n  --statement-sans:\"Times New Roman\",\"SimHei\",\"Heiti SC\",\"Noto Sans CJK SC\",sans-serif;\n  --statement-mono:Consolas,\"SFMono-Regular\",Menlo,\"Noto Sans Mono CJK SC\",monospace;\n  --statement-blue:#0000ff;\n}\nhtml,body{margin:0;padding:0}\nbody{background:#eef1f5;color:#000;font-family:var(--statement-serif);font-size:12pt;line-height:1.565;text-align:justify;font-synthesis:none}\n.toolbar{position:sticky;top:0;z-index:2;padding:14px 20px;background:#edf3ff;border-bottom:1px solid #ccd7e6;font:14px/1.6 sans-serif}\n.toolbar button{font:inherit;padding:7px 14px;margin-right:12px;cursor:pointer}\n.toolbar [role=status]{white-space:pre-wrap}\nmain{width:210mm;max-width:calc(100vw - 32px);min-height:297mm;margin:24px auto;padding:25mm;background:#fff;box-shadow:0 4px 18px #1834531a}\n.cover{padding-top:8pt;padding-bottom:24px;margin-bottom:24px;border-bottom:1px solid #d8dee8;page:cover;break-after:page;page-break-after:always}\n.cover-title{margin:0;text-align:center;font-family:var(--statement-sans);font-size:24.88pt;font-weight:700;line-height:1.35;overflow-wrap:anywhere}\n.cover-date{margin:24pt 0 0;text-align:center;font-family:var(--statement-sans);font-size:14.4pt;line-height:1.4}\n.cover-table{width:100%;margin:22pt auto 0;border-collapse:collapse;table-layout:fixed;font-size:10pt;line-height:1.45;break-inside:auto;page-break-inside:auto}\n.cover-table thead{display:table-header-group}\n.cover-table th,.cover-table td{padding:3pt 6pt;border:0.4pt solid #000;text-align:center;vertical-align:middle;font-weight:400;overflow-wrap:anywhere}\n.cover-table tbody td:nth-child(2){text-align:left}\n.cover-table th:nth-child(1),.cover-table td:nth-child(1){width:10%}\n.cover-table th:nth-child(2),.cover-table td:nth-child(2){width:46%}\n.cover-table th:nth-child(3),.cover-table td:nth-child(3){width:22%}\n.cover-table th:nth-child(4),.cover-table td:nth-child(4){width:22%}\n.problem{padding-top:16px;margin-top:24px;border-top:1px solid #d8dee8;break-before:page;page-break-before:always}\n.problem-title{margin:10pt 0 14pt;text-align:center;font-family:var(--statement-sans);font-size:17.28pt;font-weight:400;line-height:1.3;overflow-wrap:anywhere;break-after:avoid;page-break-after:avoid}\n.markdown-body{font-family:var(--statement-serif);font-size:12pt;line-height:1.565;text-align:justify}\n.markdown-body p{margin:0;text-indent:2em;orphans:2;widows:2;overflow-wrap:anywhere}\n.markdown-body p:has(>img:only-child),.markdown-body p:has(>a>img:only-child){text-indent:0;text-align:center}\n.markdown-body h1,.markdown-body h2{margin:10pt 0 8pt;text-align:left;font-family:var(--statement-sans);font-size:13pt;font-weight:700;line-height:1.3;break-after:avoid;page-break-after:avoid}\n.markdown-body h1.oic-brackets::before,.markdown-body h2.oic-brackets::before{content:\"【\"}\n.markdown-body h1.oic-brackets::after,.markdown-body h2.oic-brackets::after{content:\"】\"}\n.markdown-body h3,.markdown-body h4,.markdown-body h5,.markdown-body h6{margin:8pt 0 4pt;text-align:left;font-family:var(--statement-sans);font-size:12pt;font-weight:700;line-height:1.35;break-after:avoid;page-break-after:avoid}\n.markdown-body strong,.markdown-body b{font-family:var(--statement-sans);font-weight:700}\n.cjk-emphasis{text-emphasis:dot;text-emphasis-position:under right;-webkit-text-emphasis:dot;-webkit-text-emphasis-position:under right;text-emphasis-color:#000}\n.markdown-body ul,.markdown-body ol{margin:0;padding-left:3em}\n.markdown-body li{margin:0;padding:0}\n.markdown-body li>p,.markdown-body blockquote p,.markdown-body td p,.markdown-body th p{text-indent:0}\n.markdown-body blockquote{margin:0 0 0 2em;padding:0;border:0;color:inherit}\n.markdown-body hr{margin:10pt 0;border:0;border-top:0.4pt solid #000}\n.markdown-body a{color:var(--statement-blue);text-decoration:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}\n.markdown-body img{max-width:100%;height:auto;break-inside:avoid;page-break-inside:avoid}\n.markdown-body figure{margin:10pt 0;text-align:center;break-inside:avoid;page-break-inside:avoid}\n.markdown-body :not(pre)>code,.markdown-body kbd{padding:0;border:0;background:none;color:inherit;font-family:var(--statement-mono);font-size:0.92em;line-height:1.4;overflow-wrap:anywhere}\n.markdown-body pre{margin:3pt 0 3pt 8.5pt;padding:4pt 8pt 4pt 4pt;border:0.6pt solid var(--statement-blue);background:#fff;color:#000;font-family:var(--statement-mono);font-size:10.5pt;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;tab-size:4;break-inside:avoid;page-break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}\n.markdown-body pre code{display:block;padding-left:0;background:none;color:inherit;font:inherit;white-space:inherit}\n.markdown-body .code-line{position:relative;display:block;min-height:1.5em;white-space:pre-wrap;overflow-wrap:anywhere}\n.markdown-body .code-line::before{position:absolute;left:-22pt;width:12pt;text-align:right;color:#808080;content:attr(data-line);font-family:var(--statement-mono);font-size:9pt;line-height:1.5}\n.markdown-body table{width:auto;max-width:100%;margin:12pt auto;border-collapse:collapse;border-top:2pt solid #000;border-bottom:2pt solid #000;font-size:10.5pt;line-height:1.45;break-inside:auto;page-break-inside:auto}\n.markdown-body thead{display:table-header-group}\n.markdown-body th,.markdown-body td{padding:3pt 8pt;border:0;border-left:0.4pt solid #000;text-align:center;vertical-align:middle;font-weight:400;overflow-wrap:anywhere}\n.markdown-body th:first-child,.markdown-body td:first-child{border-left:0}\n.markdown-body thead th{border-bottom:1.2pt solid #000}\n.markdown-body tbody tr+tr>th,.markdown-body tbody tr+tr>td{border-top:0.4pt solid #000}\n.markdown-body table.compact{font-size:9pt;line-height:1.35}\n.markdown-body table.compact th,.markdown-body table.compact td{padding:2pt 5pt}\n.markdown-body .MathJax_SVG_Display{margin:0.6em 0;text-align:center;overflow:visible!important}\n.markdown-body svg{max-width:100%}\n#MathJax_Message{display:none!important}\n@media screen and (max-width:900px){main{padding:10mm}}\n@media print{\n  body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}\n  main{width:auto;max-width:none;min-height:0;margin:0;padding:0;background:#fff;box-shadow:none}\n  .toolbar{display:none!important}\n  .cover{margin:0;padding-bottom:0;border:0}\n  .problem{margin:0;padding:0;border:0}\n  a{text-decoration:none}\n}\n";
+const ACCODING_STATEMENT_CSS="/* Statement PDF styling, adapted from the oicontest LaTeX class. */\n*{box-sizing:border-box}\n:root{\n  --statement-serif:\"Latin Modern Roman\",\"Times New Roman\",\"SimSun\",\"Songti SC\",\"Noto Serif CJK SC\",serif;\n  --statement-sans:\"Times New Roman\",\"SimHei\",\"Heiti SC\",\"Noto Sans CJK SC\",sans-serif;\n  --statement-mono:Consolas,\"SFMono-Regular\",Menlo,\"Noto Sans Mono CJK SC\",monospace;\n  --statement-blue:#0000ff;\n}\nhtml,body{margin:0;padding:0}\nbody{background:#eef1f5;color:#000;font-family:var(--statement-serif);font-size:12pt;line-height:1.565;text-align:justify;font-synthesis:none}\n.toolbar{position:sticky;top:0;z-index:2;padding:14px 20px;background:#edf3ff;border-bottom:1px solid #ccd7e6;font:14px/1.6 sans-serif}\n.toolbar button{font:inherit;padding:7px 14px;margin-right:12px;cursor:pointer}\n.toolbar [role=status]{white-space:pre-wrap}\nmain{width:210mm;max-width:calc(100vw - 32px);min-height:297mm;margin:24px auto;padding:25mm;background:#fff;box-shadow:0 4px 18px #1834531a}\n.cover{padding-top:8pt;padding-bottom:24px;margin-bottom:24px;border-bottom:1px solid #d8dee8;page:cover;break-after:page;page-break-after:always}\n.cover-title{margin:0;text-align:center;font-family:var(--statement-sans);font-size:24.88pt;font-weight:700;line-height:1.35;overflow-wrap:anywhere}\n.cover-date{margin:24pt 0 0;text-align:center;font-family:var(--statement-sans);font-size:14.4pt;line-height:1.4}\n.cover-table{width:100%;margin:22pt auto 0;border-collapse:collapse;table-layout:fixed;font-size:10pt;line-height:1.45;break-inside:auto;page-break-inside:auto}\n.cover-table thead{display:table-header-group}\n.cover-table th,.cover-table td{padding:3pt 6pt;border:0.4pt solid #000;text-align:center;vertical-align:middle;font-weight:400;overflow-wrap:anywhere}\n.cover-table tbody td:nth-child(2){text-align:left}\n.cover-table th:nth-child(1),.cover-table td:nth-child(1){width:10%}\n.cover-table th:nth-child(2),.cover-table td:nth-child(2){width:46%}\n.cover-table th:nth-child(3),.cover-table td:nth-child(3){width:22%}\n.cover-table th:nth-child(4),.cover-table td:nth-child(4){width:22%}\n.problem{padding-top:16px;margin-top:24px;border-top:1px solid #d8dee8;break-before:page;page-break-before:always}\n.problem-title{margin:10pt 0 14pt;text-align:center;font-family:var(--statement-sans);font-size:17.28pt;font-weight:400;line-height:1.3;overflow-wrap:anywhere;break-after:avoid;page-break-after:avoid}\n.markdown-body{font-family:var(--statement-serif);font-size:12pt;line-height:1.565;text-align:justify}\n.markdown-body p{margin:0;text-indent:2em;orphans:2;widows:2;overflow-wrap:anywhere}\n.markdown-body p:has(>img:only-child),.markdown-body p:has(>a>img:only-child){text-indent:0;text-align:center}\n.markdown-body h1,.markdown-body h2{margin:10pt 0 8pt;text-align:left;font-family:var(--statement-sans);font-size:13pt;font-weight:700;line-height:1.3;break-after:avoid;page-break-after:avoid}\n.markdown-body h1.oic-brackets::before,.markdown-body h2.oic-brackets::before{content:\"【\"}\n.markdown-body h1.oic-brackets::after,.markdown-body h2.oic-brackets::after{content:\"】\"}\n.markdown-body h3,.markdown-body h4,.markdown-body h5,.markdown-body h6{margin:8pt 0 4pt;text-align:left;font-family:var(--statement-sans);font-size:12pt;font-weight:700;line-height:1.35;break-after:avoid;page-break-after:avoid}\n.markdown-body strong,.markdown-body b{font-family:var(--statement-sans);font-weight:700}\n.cjk-emphasis{text-emphasis:dot;text-emphasis-position:under right;-webkit-text-emphasis:dot;-webkit-text-emphasis-position:under right;text-emphasis-color:#000}\n.markdown-body ul,.markdown-body ol{margin:0;padding-left:3em}\n.markdown-body li{margin:0;padding:0}\n.markdown-body li>p,.markdown-body blockquote p,.markdown-body td p,.markdown-body th p{text-indent:0}\n.markdown-body blockquote{margin:0 0 0 2em;padding:0;border:0;color:inherit}\n.markdown-body hr{margin:10pt 0;border:0;border-top:0.4pt solid #000}\n.markdown-body a{color:var(--statement-blue);text-decoration:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}\n.markdown-body img{max-width:100%;height:auto;break-inside:avoid;page-break-inside:avoid}\n.markdown-body figure{margin:10pt 0;text-align:center;break-inside:avoid;page-break-inside:avoid}\n.markdown-body :not(pre)>code,.markdown-body kbd{padding:0;border:0;background:none;color:inherit;font-family:var(--statement-mono);font-size:0.92em;line-height:1.4;overflow-wrap:anywhere}\n.markdown-body pre{margin:3pt 0 3pt 14pt;padding:4pt 8pt 4pt 4pt;border:0.6pt solid var(--statement-blue);background:#fff;color:#000;font-family:var(--statement-mono);font-size:10.5pt;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;tab-size:4;break-inside:avoid;page-break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}\n.markdown-body pre code{display:block;padding-left:0;background:none;color:inherit;font:inherit;white-space:inherit}\n.markdown-body .code-line{position:relative;display:block;min-height:1.5em;white-space:pre-wrap;overflow-wrap:anywhere}\n.markdown-body .code-line::before{position:absolute;left:-18pt;width:12pt;text-align:right;color:#808080;content:attr(data-line);font-family:var(--statement-mono);font-size:9pt;line-height:1.5}\n.markdown-body table{width:auto;max-width:100%;margin:12pt auto;border-collapse:collapse;border-top:2pt solid #000;border-bottom:2pt solid #000;font-size:10.5pt;line-height:1.45;break-inside:auto;page-break-inside:auto}\n.markdown-body thead{display:table-header-group}\n.markdown-body th,.markdown-body td{padding:3pt 8pt;border:0;border-left:0.4pt solid #000;text-align:center;vertical-align:middle;font-weight:400;overflow-wrap:anywhere}\n.markdown-body th:first-child,.markdown-body td:first-child{border-left:0}\n.markdown-body thead th{border-bottom:1.2pt solid #000}\n.markdown-body tbody tr+tr>th,.markdown-body tbody tr+tr>td{border-top:0.4pt solid #000}\n.markdown-body table.compact{font-size:9pt;line-height:1.35}\n.markdown-body table.compact th,.markdown-body table.compact td{padding:2pt 5pt}\n.markdown-body .MathJax_SVG_Display{margin:0.6em 0;text-align:center;overflow:visible!important}\n.markdown-body svg{max-width:100%}\n#MathJax_Message{display:none!important}\n@media screen and (max-width:900px){main{padding:10mm}}\n@media print{\n  body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}\n  main{width:auto;max-width:none;min-height:0;margin:0;padding:0;background:#fff;box-shadow:none}\n  .toolbar{display:none!important}\n  .cover{margin:0;padding-bottom:0;border:0}\n  .problem{margin:0;padding:0;border:0}\n  a{text-decoration:none}\n}\n";
 function statementDateParts(time) {
   const parts = new Intl.DateTimeFormat('en-US', {timeZone: 'Asia/Shanghai', year: 'numeric', month: 'numeric', day: 'numeric'}).formatToParts(new Date(time));
   const value = type => parts.find(part => part.type === type)?.value || '';
@@ -910,66 +910,29 @@ async function renderStatement(view, statement, isCurrent, onProgress) {
     progress('正在编译公式与加载图片…');
     const bodies=[...main.querySelectorAll('.markdown-body')];
     const pageMath=pageWindow.MathJax;
-    if(pageMath?.Hub?.Queue){
-      clearLazyFontRanges(pageMath);
-      // Reuse the MathJax already running on the OJ page. Typeset a hidden copy
-      // in the page, then move the rendered formulas into the print iframe.
-      const source=document.createElement('div');
-      source.style.cssText='position:absolute;left:-100000px;top:0;width:160mm;font-family:"SimSun",serif;font-size:12pt;line-height:1.565';
-      const clones=bodies.map(body=>{
-        const clone=document.importNode(body,true);
-        clone.classList.remove('markdown-body');clone.classList.add('am-statement-source-body');
-        source.append(clone);return clone;
-      });
-      document.body.append(source);
-      try{
-        for(const [index,clone] of clones.entries()){
-          progress(`正在复用页面公式 ${index+1}/${clones.length}…`);
-          await new Promise((resolve,reject)=>{
-            const timeout=setTimeout(()=>reject(new Error(`公式编译超时（${statement.problems[index]?.heading||`第 ${index+1} 题`}），请重试。`)),60000);
-            pageMath.Hub.Queue(['Typeset',pageMath.Hub,clone],()=>{clearTimeout(timeout);resolve();});
-          });
-        }
-        copyPageMathStyles(doc);
-        bodies.forEach((body,index)=>{body.innerHTML=clones[index].innerHTML;});
-      }finally{source.remove();}
-    }else{
-    // MathJax sizes SVG output in ex units. SimSun's x-height is larger than
-    // the TeX math font's, which otherwise scales formulas up and looks bold.
-    const mathConfig={root:'https://accoding-mathjax.invalid',skipStartupTypeset:true,showMathMenu:false,messageStyle:'none',jax:['input/TeX','output/SVG'],extensions:[],menuSettings:{renderer:'SVG',locale:'en'},tex2jax:{inlineMath:[['$','$'],['\\(','\\)']],displayMath:[['$$','$$'],['\\[','\\]']],processEscapes:true},SVG:{font:'TeX',scale:80,useGlobalCache:false}};
-    view.MathJax=mathConfig;
-    // Keep the bundled renderer offline, including glyph paths, on VPN routes.
-    // Put the config in the injected script as well: the userscript sandbox may
-    // not expose view.MathJax to the iframe realm, and the OJ page's existing
-    // HTML-CSS MathJax then wins and tries to fetch from the invalid root.
-    const mathBootstrap=`MathJax=${JSON.stringify(mathConfig)};\n${ACCODING_MATHJAX_SOURCE}`;
-    const mathScript=doc.createElement('script');
-    mathScript.textContent=mathBootstrap;
-    doc.head.append(mathScript);
-    const waitForMath=async()=>{
-      const deadline=Date.now()+3000;
-      while(!view.MathJax?.Hub?.Queue&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,50));
-      return view.MathJax?.Hub?.Queue;
-    };
-    if(!await waitForMath()){
-      // Some OJ pages block inline scripts through CSP but allow unsafe-eval.
-      // The Function constructor still executes in the preview iframe.
-      try{view.Function(mathBootstrap).call(view);}catch{}
-    }
-    if(!await waitForMath())throw new Error('MathJax 未能在预览页初始化，请刷新页面后重试。');
-    const math=view.MathJax;
-    const clearRanges=()=>clearLazyFontRanges(math);
-    try{math.Hub.Register.StartupHook('End',clearRanges);}catch{}
-    // Typeset one problem at a time. A whole-contest queue could exceed the old
-    // 20-second limit on contests with many formulas, and gives no progress.
-    for(const [index,body] of bodies.entries()){
-      progress(`正在编译公式 ${index+1}/${bodies.length}…`);
-      await new Promise((resolve,reject)=>{
-        const timeout=setTimeout(()=>reject(new Error(`公式编译超时（${statement.problems[index]?.heading||`第 ${index+1} 题`}），请重试。`)),60000);
-        math.Hub.Queue(clearRanges,['Typeset',math.Hub,body],()=>{clearTimeout(timeout);resolve();});
-      });
-    }
-    }
+    if(!pageMath?.Hub?.Queue)throw new Error('页面 MathJax 未就绪，请刷新页面后重试。');
+    clearLazyFontRanges(pageMath);
+    // Reuse the MathJax already running on the OJ page. Typeset a hidden copy
+    // in the page, then move the rendered formulas into the print iframe.
+    const source=document.createElement('div');
+    source.style.cssText='position:absolute;left:-100000px;top:0;width:160mm;font-family:"SimSun",serif;font-size:12pt;line-height:1.565';
+    const clones=bodies.map(body=>{
+      const clone=document.importNode(body,true);
+      clone.classList.remove('markdown-body');clone.classList.add('am-statement-source-body');
+      source.append(clone);return clone;
+    });
+    document.body.append(source);
+    try{
+      for(const [index,clone] of clones.entries()){
+        progress(`正在复用页面公式 ${index+1}/${clones.length}…`);
+        await new Promise((resolve,reject)=>{
+          const timeout=setTimeout(()=>reject(new Error(`公式编译超时（${statement.problems[index]?.heading||`第 ${index+1} 题`}），请重试。`)),60000);
+          pageMath.Hub.Queue(['Typeset',pageMath.Hub,clone],()=>{clearTimeout(timeout);resolve();});
+        });
+      }
+      copyPageMathStyles(doc);
+      bodies.forEach((body,index)=>{body.innerHTML=clones[index].innerHTML;});
+    }finally{source.remove();}
     emphasizeStatementCjk(main);
     const failed=[];
     await Promise.all([...main.querySelectorAll('img')].map(img=>new Promise(resolve=>{
@@ -983,7 +946,12 @@ async function renderStatement(view, statement, isCurrent, onProgress) {
     const mathText=[...main.querySelectorAll('.markdown-body p,.markdown-body li,.markdown-body td,.markdown-body th,.markdown-body h1,.markdown-body h2,.markdown-body h3')].some(node=>/\$[^$\n]+\$|\\\(|\\\[/.test(node.textContent));
     if(mathText&&!main.querySelector('.MathJax_SVG,.MathJax_CHTML,.MathJax_HTML,.MathJax_MathML,mjx-container'))throw new Error('题面公式未能渲染，请刷新页面后重试。');
     progress('排版完成。在打印窗口选择“另存为 PDF”，并关闭浏览器的“页眉和页脚”。');
-    print.disabled=false;print.onclick=()=>printStatement(view,statement.title);printStatement(view,statement.title);
+    const printWithReminder=()=>{
+      const message='打印窗口的“更多设置”中请取消勾选“页眉和页脚”，否则 PDF 会带上浏览器自带的日期、网址和页码。';
+      if(view.confirm&&!view.confirm(message))return;
+      printStatement(view,statement.title);
+    };
+    print.disabled=false;print.onclick=printWithReminder;printWithReminder();
   }catch(error){progress('导出失败：'+error.message);throw error;}
 }
 

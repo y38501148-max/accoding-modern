@@ -58,7 +58,7 @@ test('page rules name every problem and escape CSS content strings',()=>{
 });
 test('statement stylesheet keeps the OI template typography',async()=>{
   const css=await readFile(new URL('../src/statement.css',import.meta.url),'utf8');
-  for(const token of ['SimSun','SimHei','Consolas','line-height:1.565','text-emphasis:dot','font-synthesis:none','page-break-before:always','margin:3pt 0 3pt 8.5pt','@media print'])assert.ok(css.includes(token),token);
+  for(const token of ['SimSun','SimHei','Consolas','line-height:1.565','text-emphasis:dot','font-synthesis:none','page-break-before:always','margin:3pt 0 3pt 14pt','@media print'])assert.ok(css.includes(token),token);
   assert.match(css,/\.problem-title\{[^}]*font-weight:400/);
 });
 test('statement reads numeric and string limits from decoded or JSON test settings',()=>{
@@ -92,23 +92,22 @@ test('missing descriptions, empty contests, and mismatched identity fail before 
 });
 
 const exportSource=await readFile(new URL('../src/statement-export.js',import.meta.url),'utf8');
-test('statement loads MathJax inside the preview iframe and typesets each problem separately',()=>{
-  assert.match(exportSource,/SVG:\{font:'TeX',scale:80,useGlobalCache:false\}/);
-  assert.match(exportSource,/const mathBootstrap=`MathJax=\$\{JSON\.stringify\(mathConfig\)\}/);
-  assert.match(exportSource,/mathScript\.textContent=mathBootstrap/);
-  assert.match(exportSource,/view\.Function\(mathBootstrap\)/);
+test('statement reuses the page MathJax and typesets each problem separately',()=>{
+  assert.match(exportSource,/pageMath=pageWindow\.MathJax/);
   assert.match(exportSource,/copyPageMathStyles\(doc\)/);
   assert.match(exportSource,/pageMath\.Hub\.Queue/);
   assert.match(exportSource,/am-statement-source-body/);
-  assert.match(exportSource,/waitForMath/);
-  assert.ok(!exportSource.includes('view.eval(ACCODING_MATHJAX_SOURCE)'));
-  assert.match(exportSource,/MathJax 未能在预览页初始化/);
+  assert.ok(!exportSource.includes('ACCODING_MATHJAX_SOURCE'));
+  assert.ok(!exportSource.includes('view.eval'));
+  assert.match(exportSource,/页面 MathJax 未就绪/);
   assert.match(exportSource,/公式编译超时/);
-  assert.match(exportSource,/正在编译公式/);
+  assert.match(exportSource,/正在复用页面公式/);
   assert.match(exportSource,/60000/);
   assert.match(exportSource,/function clearLazyFontRanges/);
-  assert.match(exportSource,/Register\.StartupHook\('End',clearRanges\)/);
   assert.match(exportSource,/typeof font!=='object'/);
+  assert.match(exportSource,/MathJax_HTML/);
+  assert.match(exportSource,/printWithReminder/);
+  assert.match(exportSource,/更多设置/);
   assert.match(exportSource,/题面公式未能渲染/);
 });
 for(const outcome of ['afterprint','close','throw'])test('PDF filename uses the contest title and restores the page after '+outcome,()=>{
