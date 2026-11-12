@@ -1,3 +1,5 @@
+import {normalizeStatementMath} from './statement-tex.mjs';
+
 // Browser-only PDF layout. Markdown code is never evaluated; TeX is rendered
 // to SVG by the bundled MathJax. No document content is sent to a PDF service.
 export function statementMathExtensions(normalizeMath = value => value) {
@@ -10,12 +12,17 @@ export function statementMathExtensions(normalizeMath = value => value) {
     if (end < 0) return;
     const text = source.slice(start[0].length, end).trim();
     if (!text || (open === '$' && text.includes('\n'))) return;
-    return {type:'amMath', raw:source.slice(0, end + close.length), text:normalizeMath(text), display:block || open === '$$' || open === '\\['};
+    return {type:'amMath', raw:source.slice(0, end + close.length), text:normalizeMath(text,block || open === '$$' || open === '\\['), display:block || open === '$$' || open === '\\['};
   };
   return [
     {name:'amMath', level:'block', start:source=>source.search(/(?:^|\n) {0,3}(?:\$\$|\\\[)/), tokenizer:source=>read(source,true)},
     {name:'amMath', level:'inline', start:source=>source.search(/\$|\\[([]/), tokenizer:source=>read(source,false)}
   ];
+}
+
+export function normalizeStatementPdfMath(text,display,fromOJ) {
+  const delimiter=display?'$$':'$';
+  return normalizeStatementMath(`${delimiter}${text}${delimiter}`,fromOJ).slice(delimiter.length,-delimiter.length);
 }
 
 export function collectStatementMath(tokens, result = []) {
@@ -27,6 +34,12 @@ export function collectStatementMath(tokens, result = []) {
   }
   return result;
 }
+
+// FontKit reports these source font line boxes with different em heights.
+// Normalize paragraph leading so Song's positive descender cannot collapse
+// wrapped Chinese lines, while Latin text keeps the same physical spacing.
+const statementFontHeight={Song:.6,Hei:1,Kai:1,Latin:1.407,Mono:2701/2048};
+const statementLeading=(font,spacing=1.3)=>spacing/statementFontHeight[font||'Song'];
 
 const PAGE_WIDTH = 595.28, MARGIN = 70.87, WIDTH = PAGE_WIDTH - MARGIN * 2;
 const decode = value => String(value || '').replace(/&(?:amp|lt|gt|quot|#39);/g, v=>({'&amp;':'&','&lt;':'<','&gt;':'>','&quot;':'"','&#39;':"'"}[v]));
@@ -57,12 +70,13 @@ export async function statementPdfDefinition(statement, options) {
   // at a time, keeping both text and SVG as PDF vectors and preventing clipping.
   async function paragraph(tokens, width = WIDTH, style = {}) {
     const parts = (await inline(tokens,style)).flatMap(part=>part.kind==='graphic'||part.font==='Mono'?[part]:String(part.text).split(/([\x00-\x7f]+)/).filter(Boolean).map(text=>({...part,text,font:/^[\x00-\x7f]+$/.test(text)?'Latin':part.font})));
+    for(const part of parts)if(part.kind!=='graphic')part.lineHeight=statementLeading(part.font);
     if (!parts.some(p=>p.kind === 'graphic')) return [{text:parts,margin:[0,2,0,6]}];
     const lines = []; let line = [], used = 0;
     const flush = () => {if (line.length) lines.push(line);line=[];used=0;};
     for (const part of parts) {
       if (part.kind === 'graphic') {
-        const ratio = Math.min(1,width/part.width), p = {...part,width:part.width*ratio,height:part.height*ratio};
+        const ratio = Math.min(1,width/part.width), p = {...part,width:part.width*ratio,height:part.height*ratio,ascent:(part.ascent??part.height)*ratio,descent:(part.descent??0)*ratio};
         if (used + p.width > width) flush();
         line.push(p); used += p.width; continue;
       }
@@ -82,12 +96,12 @@ export async function statementPdfDefinition(statement, options) {
     }
     flush();
     return lines.map((items,index)=>{
-      const ascent=Math.max(9.6,...items.map(p=>p.ascent || (p.fontSize||12)*.8));
-      const descent=Math.max(2.4,...items.map(p=>p.descent || (p.fontSize||12)*.2));
+      const ascent=Math.max(9.6,...items.map(p=>p.ascent ?? (p.fontSize||12)*.8));
+      const descent=Math.max(2.4,...items.map(p=>p.descent ?? (p.fontSize||12)*.2));
       const height=Math.max(17,ascent+descent);
       return {columns:items.map(({kind,height:h,ascent:a,descent:d,_style,...p})=>kind === 'graphic'
         ? {...p,height:h,margin:[0,ascent-(a||h),0,0]}
-        : {...p,noWrap:true,lineHeight:1,margin:[0,ascent-(p.fontSize||12)*.8,0,Math.max(0,height-ascent-descent)]}),columnGap:0,margin:[0,1,0,index===lines.length-1?6:1],unbreakable:true};
+        : {...p,noWrap:true,lineHeight:statementLeading(p.font,1),margin:[0,ascent-(p.fontSize||12)*.8,0,Math.max(0,height-ascent-descent)]}),columnGap:0,margin:[0,1,0,index===lines.length-1?6:1],unbreakable:true};
     });
   }
   async function render(tokens,width = WIDTH,style = {}) {

@@ -46,21 +46,26 @@ async function createStatementPdf(statement,{signal,onProgress=()=>{}}={}) {
     }
     await doc.fonts.ready;current();
     view.pdfMake.addVirtualFileSystem(Object.fromEntries(names.map((name,index)=>[name,values[index]])));
-    const normalize=text=>normalizeStatementMath(`$${text}$`,createMarkdownCore().fromOJ).slice(1,-1);
+    const normalize=(text,display)=>normalizeStatementPdfMath(text,display,createMarkdownCore().fromOJ);
     const parser=new view.marked.Marked({gfm:true,extensions:statementMathExtensions(normalize)});
     const lex=source=>parser.lexer(String(source).replace(/\r\n?/g,'\n'));
-    const formulae=statement.problems.flatMap(p=>collectStatementMath(lex(p.description)));
+    const formulae=statement.problems.flatMap(p=>collectStatementMath(lex(p.description)).map(t=>({...t,problem:p.heading})));
     const formulaMap=new Map();
     const container=doc.createElement('main');container.style.cssText='font-size:16px;width:605px';doc.body.append(container);
     for(const t of formulae) {
       const key=JSON.stringify([t.text,t.display]);if(formulaMap.has(key))continue;
       const span=doc.createElement('span'),script=doc.createElement('script');
+      span.dataset.problem=t.problem;
       script.type=t.display?'math/tex; mode=display':'math/tex';script.textContent=t.text;span.append(script);container.append(span);formulaMap.set(key,span);
     }
     if(formulaMap.size){
       onProgress('正在编译公式…');
       view.MathJax={root:'https://accoding-mathjax.invalid',skipStartupTypeset:true,showMathMenu:false,messageStyle:'none',jax:['input/TeX','output/SVG'],extensions:[],menuSettings:{renderer:'SVG',locale:'en'},SVG:{font:'TeX',blacker:0,useGlobalCache:false}};
       view.eval(ACCODING_MATHJAX_SOURCE);
+      view.MathJax.Hub.Register.StartupHook('End Cookie',()=>{
+        view.MathJax.Hub.config.jax=['input/TeX','output/SVG'];
+        view.MathJax.Hub.config.menuSettings.renderer='SVG';
+      });
       await new Promise((resolve,reject)=>{
         const timer=setTimeout(()=>reject(new Error('公式编译超时，请重试。')),30000);
         const math=view.MathJax;
@@ -73,9 +78,11 @@ async function createStatementPdf(statement,{signal,onProgress=()=>{}}={}) {
         },['Typeset',math.Hub,container],()=>{clearTimeout(timer);resolve();});
       });
       current();
-      if(container.querySelector('.MathJax_Error,[data-mjx-error]'))throw new Error('题面存在无法编译的公式，请检查后重试。');
       for(const [key,span] of formulaMap) {
-        const svg=span.querySelector('svg');if(!svg)throw new Error('公式未生成，已停止导出。');
+        const svg=span.querySelector('svg');
+        if(!svg||span.querySelector('.MathJax_Error,.noError,merror,[data-mjx-error]')) {
+          throw new Error(`${span.dataset.problem}：公式编译失败，请检查公式 ${JSON.parse(key)[0].slice(0,120)}`);
+        }
         const copy=svg.cloneNode(true);
         // The reference uses 12 TeX points (11.955 PDF points). Avoid MathJax's
         // browser x-height enlargement, which made the first preview too large.

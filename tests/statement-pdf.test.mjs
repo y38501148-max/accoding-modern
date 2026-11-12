@@ -31,3 +31,27 @@ test('formula font outlines use original Computer Modern and reference size',asy
   const source=await readFile(new URL('../src/statement-pdf-browser.js',import.meta.url),'utf8');
   assert.match(source,/12\*72\/72\.27\/1000/);assert.match(source,/blacker:0/);
 });
+
+test('OJ multiline matrix normalization preserves commands, subscripts and row separators',async()=>{
+  const {normalizeStatementPdfMath}=await import('../src/statement-pdf.mjs');
+  const {createMarkdownCore}=await import('../src/markdown-core.mjs');
+  const fromOJ=createMarkdownCore().fromOJ;
+  const common=String.raw`\begin{bmatrix}
+    1 & \omega_n^k \\
+    1 & -\omega_n^k
+\end{bmatrix}`;
+  const saved=common.replace(/\\/g,'\\\\').replace(/_/g,'\\_');
+  const parser=new sandbox.marked.Marked({gfm:true,extensions:statementMathExtensions((text,display)=>normalizeStatementPdfMath(text,display,fromOJ))});
+  const tokens=collectStatementMath(parser.lexer('$$\n'+saved+'\n$$'));
+  assert.equal(tokens.length,1);assert.equal(tokens[0].display,true);assert.equal(tokens[0].text,common);
+  assert.equal(normalizeStatementPdfMath(common,true,fromOJ),common);
+  assert.equal(normalizeStatementPdfMath(String.raw`x\_i`,false,fromOJ),'x_i');
+});
+
+
+test('large images reserve their full height without drawing into previous paragraphs',async()=>{
+  const definition=await statementPdfDefinition({title:'C8',contestTitle:'测试',dateText:'2026',problems:[{label:'A',title:'图',heading:'A 图',timeLimitText:'1000 ms',memoryLimitText:'65536 KB',description:'前文\n\n![图](test.png)\n\n后文'}]}, {lex,measure:s=>s.length*6,image:async()=>({image:'test-image',width:320,height:240})});
+  const line=definition.content.find(node=>node.columns?.some(column=>column.image));
+  const image=line.columns.find(column=>column.image);
+  assert.equal(image.height,240);assert.ok(image.margin[1]>=0,JSON.stringify(image));
+});
