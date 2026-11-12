@@ -43,7 +43,7 @@ main{width:210mm;max-width:calc(100vw - 32px);min-height:297mm;margin:24px auto;
 .markdown-body img{max-width:100%;height:auto;break-inside:avoid;page-break-inside:avoid}
 .markdown-body figure{margin:10pt 0;text-align:center;break-inside:avoid;page-break-inside:avoid}
 .markdown-body :not(pre)>code,.markdown-body kbd{padding:0;border:0;background:none;color:inherit;font-family:var(--statement-mono);font-size:0.92em;line-height:1.4;overflow-wrap:anywhere}
-.markdown-body pre{margin:3pt -3.5pt 3pt 8.5pt;padding:4pt 8pt 4pt 4pt;border:0.6pt solid var(--statement-blue);background:#fff;color:#000;font-family:var(--statement-mono);font-size:10.5pt;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;tab-size:4;break-inside:avoid;page-break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.markdown-body pre{margin:3pt 0 3pt 8.5pt;padding:4pt 8pt 4pt 4pt;border:0.6pt solid var(--statement-blue);background:#fff;color:#000;font-family:var(--statement-mono);font-size:10.5pt;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;tab-size:4;break-inside:avoid;page-break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .markdown-body pre code{display:block;padding-left:0;background:none;color:inherit;font:inherit;white-space:inherit}
 .markdown-body .code-line{position:relative;display:block;min-height:1.5em;white-space:pre-wrap;overflow-wrap:anywhere}
 .markdown-body .code-line::before{position:absolute;left:-22pt;width:12pt;text-align:right;color:#808080;content:attr(data-line);font-family:var(--statement-mono);font-size:9pt;line-height:1.5}

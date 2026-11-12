@@ -58,7 +58,7 @@ test('page rules name every problem and escape CSS content strings',()=>{
 });
 test('statement stylesheet keeps the OI template typography',async()=>{
   const css=await readFile(new URL('../src/statement.css',import.meta.url),'utf8');
-  for(const token of ['SimSun','SimHei','Consolas','line-height:1.565','text-emphasis:dot','font-synthesis:none','page-break-before:always','margin:3pt -3.5pt 3pt 8.5pt','@media print'])assert.ok(css.includes(token),token);
+  for(const token of ['SimSun','SimHei','Consolas','line-height:1.565','text-emphasis:dot','font-synthesis:none','page-break-before:always','margin:3pt 0 3pt 8.5pt','@media print'])assert.ok(css.includes(token),token);
   assert.match(css,/\.problem-title\{[^}]*font-weight:400/);
 });
 test('statement reads numeric and string limits from decoded or JSON test settings',()=>{
