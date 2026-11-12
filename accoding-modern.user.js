@@ -889,18 +889,27 @@ async function renderStatement(view, statement, isCurrent, onProgress) {
     view.MathJax={root:'https://accoding-mathjax.invalid',skipStartupTypeset:true,showMathMenu:false,messageStyle:'none',jax:['input/TeX','output/SVG'],extensions:[],menuSettings:{renderer:'SVG',locale:'en'},tex2jax:{inlineMath:[['$','$'],['\\(','\\)']],displayMath:[['$$','$$'],['\\[','\\]']],processEscapes:true},SVG:{font:'TeX',scale:80,useGlobalCache:false}};
     // Keep the bundled renderer offline, including glyph paths, on VPN routes.
     view.eval(ACCODING_MATHJAX_SOURCE);
+    const math=view.MathJax;
     await new Promise((resolve,reject)=>{
-      const timeout=setTimeout(()=>reject(new Error('公式编译超时，请重试。')),20000);
-      const math=view.MathJax;
+      const timeout=setTimeout(()=>reject(new Error('公式引擎启动超时，请重试。')),20000);
       math.Hub.Queue(()=>{
         // All SVG glyph tables are already bundled. Stale lazy-load ranges in
         // 2.7.7 otherwise fail when a formula uses CJK or a fallback symbol.
         for(const font of Object.values(math.OutputJax.SVG.FONTDATA.FONTS))if(typeof font==='object')delete font.Ranges;
-      },['Typeset',math.Hub,main],()=>{
-        clearTimeout(timeout);
-        try{emphasizeStatementCjk(main);resolve();}catch(error){reject(error);}
+        clearTimeout(timeout);resolve();
       });
     });
+    // Typeset one problem at a time. A whole-contest queue could exceed the old
+    // 20-second limit on contests with many formulas, and gives no progress.
+    const bodies=[...main.querySelectorAll('.markdown-body')];
+    for(const [index,body] of bodies.entries()){
+      progress(`正在编译公式 ${index+1}/${bodies.length}…`);
+      await new Promise((resolve,reject)=>{
+        const timeout=setTimeout(()=>reject(new Error(`公式编译超时（${statement.problems[index]?.heading||`第 ${index+1} 题`}），请重试。`)),60000);
+        math.Hub.Queue(['Typeset',math.Hub,body],()=>{clearTimeout(timeout);resolve();});
+      });
+    }
+    emphasizeStatementCjk(main);
     const failed=[];
     await Promise.all([...main.querySelectorAll('img')].map(img=>new Promise(resolve=>{
       const done=()=>{clearTimeout(timer);img.onload=img.onerror=null;if(!img.naturalWidth)failed.push(img.alt||img.src);resolve();};

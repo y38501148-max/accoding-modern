@@ -92,8 +92,11 @@ test('missing descriptions, empty contests, and mismatched identity fail before 
 });
 
 const exportSource=await readFile(new URL('../src/statement-export.js',import.meta.url),'utf8');
-test('statement calibrates MathJax to the CJK body and refuses silently unrendered formulas',()=>{
+test('statement calibrates MathJax, typesets each problem separately and refuses silently unrendered formulas',()=>{
   assert.match(exportSource,/SVG:\{font:'TeX',scale:80,useGlobalCache:false\}/);
+  assert.match(exportSource,/公式引擎启动超时/);
+  assert.match(exportSource,/正在编译公式/);
+  assert.match(exportSource,/60000/);
   assert.match(exportSource,/题面公式未能渲染/);
 });
 for(const outcome of ['afterprint','close','throw'])test('PDF filename uses the contest title and restores the page after '+outcome,()=>{
