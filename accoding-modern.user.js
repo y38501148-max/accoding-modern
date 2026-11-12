@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Accoding Modern · 北航 OJ 管理界面
 // @namespace    local.accoding.modern
-// @version      1.26.3
+// @version      1.26.4
 // @description  界面美化、教学工作台、按题筛选通过提交、页内代码复核、独立补题排行榜与提交查看、赛事统计看板、Markdown 兼容编辑、Statement LaTeX 工程导出与批量测试点选择，保留原站登录和操作。
 // @include      https://accoding.buaa.edu.cn:4000/*
 // @include      https://accoding-4000.e1.buaa.edu.cn/*
@@ -23,7 +23,7 @@
 
 (() => {
 'use strict';
-const ACCODING_MODERN_VERSION="1.26.3";
+const ACCODING_MODERN_VERSION="1.26.4";
 // Runtime URL compatibility for the direct site and BUAA VPN reverse proxy.
 // The VPN keeps the upstream app under /https-4000/<opaque-token>/, so absolute
 // root requests and pathname checks must be evaluated relative to that prefix.
@@ -911,7 +911,7 @@ function mathAt(text, start) {
   if (text.startsWith('\\[', start)) return {open: '\\[', close: '\\]', display: true};
   if (text.startsWith('\\(', start)) return {open: '\\(', close: '\\)', display: false};
   if (text.startsWith('$$', start)) return {open: '$$', close: '$$', display: true};
-  if (text[start] === '$' && /\S/.test(text[start + 1] || '')) return {open: '$', close: '$', display: false};
+  if (text[start] === '$' && text[start + 1] !== '$') return {open: '$', close: '$', display: false};
   return null;
 }
 
@@ -942,12 +942,14 @@ function renderInline(source, state) {
       const close = findClosing(text, i + math.open.length, math.close);
       if (close >= 0) {
         const body = text.slice(i + math.open.length, close);
-        if (math.open === '$' && (body.includes('\n') || !body.trim())) {
+        const inline = math.open === '$' || math.open === '\\(';
+        const content = inline ? body.trim() : body;
+        if (inline && (content.includes('\n') || !content)) {
           out += '\\$';
           i++;
           continue;
         }
-        out += math.open === '$$' ? `\\[\n${body}\n\\]` : `${math.open}${body}${math.close}`;
+        out += math.open === '$$' ? `\\[\n${content}\n\\]` : `${math.open}${content}${math.close}`;
         i = close + math.close.length;
         continue;
       }

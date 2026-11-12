@@ -125,7 +125,7 @@ function mathAt(text, start) {
   if (text.startsWith('\\[', start)) return {open: '\\[', close: '\\]', display: true};
   if (text.startsWith('\\(', start)) return {open: '\\(', close: '\\)', display: false};
   if (text.startsWith('$$', start)) return {open: '$$', close: '$$', display: true};
-  if (text[start] === '$' && /\S/.test(text[start + 1] || '')) return {open: '$', close: '$', display: false};
+  if (text[start] === '$' && text[start + 1] !== '$') return {open: '$', close: '$', display: false};
   return null;
 }
 
@@ -156,12 +156,14 @@ function renderInline(source, state) {
       const close = findClosing(text, i + math.open.length, math.close);
       if (close >= 0) {
         const body = text.slice(i + math.open.length, close);
-        if (math.open === '$' && (body.includes('\n') || !body.trim())) {
+        const inline = math.open === '$' || math.open === '\\(';
+        const content = inline ? body.trim() : body;
+        if (inline && (content.includes('\n') || !content)) {
           out += '\\$';
           i++;
           continue;
         }
-        out += math.open === '$$' ? `\\[\n${body}\n\\]` : `${math.open}${body}${math.close}`;
+        out += math.open === '$$' ? `\\[\n${content}\n\\]` : `${math.open}${content}${math.close}`;
         i = close + math.close.length;
         continue;
       }

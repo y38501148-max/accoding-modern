@@ -69,6 +69,13 @@ $$
   assert.match(result.latex,/1 & \\omega_n\^k \\\\/);
   assert.match(result.latex,/1 & -\\omega_n\^k/);
 });
+test('inline math allows whitespace just inside the dollar delimiters',()=>{
+  for(const source of ['$ x $','$  x + y  $','$x $','$ x$','前 $ x + y $ 后'])
+    assert.ok(!markdownToLatex(source).latex.includes('\\$'), source);
+  assert.equal(markdownToLatex('$ x $').latex,'$x$\\par');
+  assert.equal(markdownToLatex('前 $ x + y $ 后').latex,'前 $x + y$ 后\\par');
+  assert.equal(markdownToLatex('\\( x \\)').latex,'\\(x\\)\\par');
+});
 test('OJ-escaped formulas are decoded while common row separators are kept',()=>{
   const fromOJ=createMarkdownCore().fromOJ;
   const common=String.raw`$$\begin{bmatrix} a \\ b \end{bmatrix}$$`;
