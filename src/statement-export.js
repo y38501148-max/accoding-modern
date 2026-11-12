@@ -156,7 +156,7 @@ function mountStatementExport(Core) {
       setStatus('正在转换题面…');
       project = await createLatexProject(statement, {
         templateClass: ACCODING_OICONTEST_CLASS,
-        normalizeMath: createMarkdownCore().fromOJ,
+        normalizeMath: value => normalizeStatementMath(value, createMarkdownCore().fromOJ),
         signal: aborter.signal,
         fetchImage: fetchStatementImage,
         onProgress: ({index, total}) => setStatus(`正在收集图片 ${index}/${total}…`, total ? index / total : 0)

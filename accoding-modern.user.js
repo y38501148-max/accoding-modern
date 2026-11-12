@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Accoding Modern · 北航 OJ 管理界面
 // @namespace    local.accoding.modern
-// @version      1.26.2
+// @version      1.26.3
 // @description  界面美化、教学工作台、按题筛选通过提交、页内代码复核、独立补题排行榜与提交查看、赛事统计看板、Markdown 兼容编辑、Statement LaTeX 工程导出与批量测试点选择，保留原站登录和操作。
 // @include      https://accoding.buaa.edu.cn:4000/*
 // @include      https://accoding-4000.e1.buaa.edu.cn/*
@@ -23,7 +23,7 @@
 
 (() => {
 'use strict';
-const ACCODING_MODERN_VERSION="1.26.2";
+const ACCODING_MODERN_VERSION="1.26.3";
 // Runtime URL compatibility for the direct site and BUAA VPN reverse proxy.
 // The VPN keeps the upstream app under /https-4000/<opaque-token>/, so absolute
 // root requests and pathname checks must be evaluated relative to that prefix.
@@ -925,8 +925,15 @@ function joinSoftLines(lines) {
   return result;
 }
 
+function soleImage(text) {
+  const trimmed = String(text || '').trim();
+  if (!trimmed.startsWith('![')) return null;
+  const image = readImage(trimmed, 0);
+  return image && image.end === trimmed.length ? image : null;
+}
+
 function renderInline(source, state) {
-  const text = cleanHtml(source);
+  const text = cleanHtml(source), onlyImage = soleImage(text);
   let out = '';
   for (let i = 0; i < text.length;) {
     if (text[i] === '\n') { out += '\\newline{}\n'; i++; continue; }
@@ -966,7 +973,9 @@ function renderInline(source, state) {
       const image = readImage(text, i);
       if (image) {
         const entry = state.addImage(image.url, image.alt);
-        out += `\\par\\noindent\\begin{center}\\includegraphics[width=\\linewidth,height=0.75\\textheight,keepaspectratio]{images/${entry.index}}\\end{center}\\par\n`;
+        out += onlyImage
+          ? `\\par\\noindent\\begin{center}\\includegraphics[width=\\linewidth,height=0.75\\textheight,keepaspectratio]{images/${entry.index}}\\end{center}\\par\n`
+          : `\\adjustimage{max width=\\linewidth,max height=0.75\\textheight,keepaspectratio}{images/${entry.index}}`;
         i = image.end;
         continue;
       }
@@ -1160,6 +1169,36 @@ function paragraph(lines, state) {
   return `${renderInline(joinSoftLines(text.split('\n')), state)}\\par\n`;
 }
 
+function displayMathStart(line) {
+  const match = /^ {0,3}(\$\$|\\\[)(.*)$/.exec(line);
+  if (!match) return null;
+  const close = match[1] === '$$' ? '$$' : '\\]';
+  return match[2].includes(close) ? null : {close, rest: match[2]};
+}
+
+function renderDisplayMath(lines, index, state) {
+  const start = displayMathStart(lines[index]);
+  if (!start) return null;
+  const chunks = [start.rest];
+  let cursor = index + 1, closed = false;
+  while (cursor < lines.length) {
+    const line = lines[cursor], position = line.indexOf(start.close);
+    if (position >= 0) {
+      chunks.push(line.slice(0, position));
+      closed = true;
+      cursor++;
+      break;
+    }
+    chunks.push(line);
+    cursor++;
+  }
+  if (!closed) {
+    state.warnings.push('存在未闭合的显示公式，已按普通文字导出。');
+    return null;
+  }
+  return {latex: `\n\\[\n${chunks.join('\n').trim()}\n\\]\n`, next: cursor};
+}
+
 function renderBlocks(lines, state) {
   let out = '', index = 0;
   while (index < lines.length) {
@@ -1184,6 +1223,12 @@ function renderBlocks(lines, state) {
       index++;
       continue;
     }
+    const displayMath = renderDisplayMath(lines, index, state);
+    if (displayMath) {
+      out += displayMath.latex;
+      index = displayMath.next;
+      continue;
+    }
     if (isHeading(line)) {
       const match = /^(#{1,6})\s+(.*?)\s*#*\s*$/.exec(line);
       const level = match[1].length;
@@ -1200,7 +1245,7 @@ function renderBlocks(lines, state) {
         quote.push(lines[index].replace(/^\s*>\s?/, ''));
         index++;
       }
-      out += `\\begin{quote}\n${renderBlocks(quote, state)}\\end{quote}\n`;
+      out += `\\begin{quote}\\kaishu\n${renderBlocks(quote, state)}\\end{quote}\n`;
       continue;
     }
     if (isList(line)) {
@@ -1232,7 +1277,8 @@ function renderBlocks(lines, state) {
     while (index < lines.length) {
       const next = lines[index];
       if (!next.trim() || isFence(next) || isHeading(next) || isHr(next) || isList(next) ||
-          next.trimStart().startsWith('>') || isTableSeparator(lines[index + 1] || '') && next.includes('|') ||
+          next.trimStart().startsWith('>') || displayMathStart(next) ||
+          isTableSeparator(lines[index + 1] || '') && next.includes('|') ||
           /^( {4}|\t)/.test(next)) break;
       paragraphLines.push(next);
       index++;
@@ -1240,6 +1286,17 @@ function renderBlocks(lines, state) {
     out += paragraph(paragraphLines, state);
   }
   return out;
+}
+
+/**
+ * OJ stores every formula backslash twice. Plain Markdown (and TeX pasted
+ * directly) does not. Decode only when a formula shows OJ's double escapes,
+ * so a common matrix row separator `\\` is not collapsed into `\`.
+ */
+function normalizeStatementMath(source, fromOJ) {
+  const value = String(source ?? '');
+  const escaped = /(^|[^\\])\\\\[\\_A-Za-z]|(^|[^\\])\\_/.test(value);
+  return escaped && typeof fromOJ === 'function' ? fromOJ(value) : value;
 }
 
 function markdownToLatex(markdown, options = {}) {
@@ -1281,11 +1338,12 @@ function statementToLatex(statement, options = {}) {
   const tex = String.raw`\documentclass{oicontest}
 \usepackage{booktabs}
 \usepackage{xltabular}
+\usepackage{adjustbox}
 \graphicspath{{images/}}
 \title{${latexEscape(statement.contestTitle)}}
 \date{${latexEscape(statement.dateText)}}
 \setlength{\emergencystretch}{2em}
-\newcommand{\amproblem}[2]{\clearpage\section{#1\qquad #2}}
+\newcommand{\amproblem}[2]{\clearpage\section{#1\quad #2}}
 \begin{document}
 \thispagestyle{empty}
 \begin{center}
@@ -1313,7 +1371,7 @@ const README = `# Statement LaTeX 工程
 
 ## 编译
 
-需要 TeX Live（含 XeLaTeX、ctex、xeCJK、minted、Pygments、tabularray、tcolorbox、fancyhdr、lastpage、booktabs、xltabular）。
+需要 TeX Live（含 XeLaTeX、ctex、xeCJK、minted、Pygments、tabularray、tcolorbox、fancyhdr、lastpage、booktabs、xltabular、adjustbox）。
 
 \`\`\`sh
 sh build.sh
@@ -1574,7 +1632,7 @@ function mountStatementExport(Core) {
       setStatus('正在转换题面…');
       project = await createLatexProject(statement, {
         templateClass: ACCODING_OICONTEST_CLASS,
-        normalizeMath: createMarkdownCore().fromOJ,
+        normalizeMath: value => normalizeStatementMath(value, createMarkdownCore().fromOJ),
         signal: aborter.signal,
         fetchImage: fetchStatementImage,
         onProgress: ({index, total}) => setStatus(`正在收集图片 ${index}/${total}…`, total ? index / total : 0)

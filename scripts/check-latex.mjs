@@ -14,9 +14,9 @@ const statement = {
   dateText: '2026 年 10 月 20 日',
   problems: [
     {label: 'A', title: '第一题', heading: 'A 第一题', timeLimitText: '1000 ms', memoryLimitText: '65536 KB',
-      description: '## 题目描述\n\n给定 $x_i$，求 `a_b` 与 **粗体**。\n\n```cpp\nint main() { return 0; }\n```\n\n| 名称 | 数值 |\n|:---|---:|\n| 样例 | 1 |\n\n![示意图](/image/1.png)'},
+      description: '## 题目描述\n\n给定 $x_i$，求 `a_b` 与 **粗体**。\n\n行内图片 ![示意图](/image/1.png) 保持行内。\n\n```cpp\nint main() { return 0; }\n```\n\n| 名称 | 数值 |\n|:---|---:|\n| 样例 | 1 |\n\n![示意图](/image/1.png)'},
     {label: 'B', title: '第二题', heading: 'B 第二题', timeLimitText: '2000 ms', memoryLimitText: '131072 KB',
-      description: '## 输入格式\n\n- 第一项\n  - 嵌套\n- 第二项\n\n> 引用 & 文本\n\n$$\\sum_{i=1}^n a_i$$'}
+      description: '## 输入格式\n\n- 第一项\n  - 嵌套\n- 第二项\n\n> 引用 & 文本\n\n$$\\sum_{i=1}^n a_i$$\n\n$$\n\\begin{bmatrix} \\hat{x} \\\\ \\hat{y} \\end{bmatrix} =\n\\begin{bmatrix}\n    1 & \\omega_n^k \\\\\n    1 & -\\omega_n^k\n\\end{bmatrix}\n$$'}
   ]
 };
 

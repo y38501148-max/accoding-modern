@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {createStoredZip} from '../src/zip-core.mjs';
-import {latexEscape,markdownToLatex,statementToLatex,createLatexProject,safeFilename} from '../src/statement-tex.mjs';
+import {latexEscape,markdownToLatex,statementToLatex,createLatexProject,safeFilename,normalizeStatementMath} from '../src/statement-tex.mjs';
+import {createMarkdownCore} from '../src/markdown-core.mjs';
 
 const templateClass=await readFile(new URL('../src/oicontest.cls',import.meta.url),'utf8');
 const png=new Uint8Array([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a,1,2,3,4]);
@@ -49,6 +50,43 @@ test('markdown converts headings, math, code, tables, lists, links, images and H
   assert.match(result.latex,/\\newline\{\}/);
   assert.deepEqual(result.images.map(image=>[image.index,image.url,image.alt]),[[1,'/img/a.png','图']]);
 });
+test('display math with indented matrix rows stays a formula instead of a code block',()=>{
+  const source=String.raw`## 题目描述
+
+蝴蝶变换：
+$$
+\begin{bmatrix} \hat{x} \\ \hat{y} \end{bmatrix} =
+\begin{bmatrix}
+    1 & \omega_n^k \\
+    1 & -\omega_n^k
+\end{bmatrix}
+\begin{bmatrix} x \\ y \end{bmatrix}
+$$
+现给定 $n$ 的值。`;
+  const result=markdownToLatex(source);
+  assert.ok(!result.latex.includes('\\begin{minted}'), result.latex);
+  assert.match(result.latex,/\\\[\n\\begin\{bmatrix\}/);
+  assert.match(result.latex,/1 & \\omega_n\^k \\\\/);
+  assert.match(result.latex,/1 & -\\omega_n\^k/);
+});
+test('OJ-escaped formulas are decoded while common row separators are kept',()=>{
+  const fromOJ=createMarkdownCore().fromOJ;
+  const common=String.raw`$$\begin{bmatrix} a \\ b \end{bmatrix}$$`;
+  const saved=String.raw`$$\\begin{bmatrix} a \\\\ b \\end{bmatrix}$$`;
+  assert.equal(normalizeStatementMath(common,fromOJ),common);
+  assert.equal(normalizeStatementMath(saved,fromOJ),common);
+  assert.equal(normalizeStatementMath(String.raw`$a\_i$`,fromOJ),String.raw`$a_i$`);
+  assert.equal(normalizeStatementMath(String.raw`$a_i$`,fromOJ),String.raw`$a_i$`);
+});
+test('quotes use the Kai font and inline images are not centered or enlarged',()=>{
+  const quote=markdownToLatex('> 引用文字');
+  assert.match(quote.latex,/\\begin\{quote\}\\kaishu/);
+  const standalone=markdownToLatex('![图](/img/1.png)');
+  assert.match(standalone.latex,/\\begin\{center\}.*\\includegraphics\[width=\\linewidth/);
+  const inline=markdownToLatex('前 ![图](/img/1.png) 后');
+  assert.match(inline.latex,/前 \\adjustimage\{max width=\\linewidth,max height=0\.75\\textheight,keepaspectratio\}\{images\/1\} 后/);
+  assert.ok(!inline.latex.includes('\\begin{center}'));
+});
 test('invalid tables and unclosed math fall back with warnings instead of disappearing',()=>{
   const result=markdownToLatex('| A | B |\n|---|---|---|\n| 1 | 2 |\n\n文字 \\(未闭合');
   assert.match(result.latex,/A \| B/);
@@ -62,7 +100,7 @@ test('statement document has the cover, problem order, page breaks and no file I
   assert.match(result.tex,/\\begin\{xltabular\}.*题号.*题目名称.*时间限制.*空间限制/s);
   assert.match(result.tex,/\nA & 第一题 & 1000 ms & 65536 KB/);
   assert.match(result.tex,/\nB & 第二题 & 2000 ms & 131072 KB/);
-  assert.match(result.tex,/\\newcommand\{\\amproblem\}\[2\]\{\\clearpage\\section\{#1\\qquad #2\}\}/);
+  assert.match(result.tex,/\\newcommand\{\\amproblem\}\[2\]\{\\clearpage\\section\{#1\\quad #2\}\}/);
   assert.match(result.tex,/\\amproblem\{A\}\{第一题\}/);
   assert.match(result.tex,/\\amproblem\{B\}\{第二题\}/);
   assert.ok(!/文件名|目录|可执行|测试点|等分|编译选项|下发文件/.test(result.tex));
