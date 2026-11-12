@@ -1,5 +1,7 @@
 # Accoding Modern
 
+1.26.1 修复多道题包含图片时 ZIP 内图片编号重复、导出报“ZIP 文件名缺失或重复”的问题。
+
 1.26.0 Statement 导出改为生成可本地 XeLaTeX 编译的 LaTeX 工程 ZIP，并移除旧的 HTML 预览、Chrome 打印、页面 MathJax 排版和 `statement.css`。工程包含题面模板类、图片与编译脚本；不随包分发专有字体，自动回退到 Fandol/Noto。
 
 1.24.11 新增服务端预计算核查榜单：按人工 AI 次数及命中代码份数排序，每页 10 人，支持完整 XLSX 导出。修复小班班级显示，统计与操作按钮同行对齐。详见[核查说明](docs/ai-review.md)。

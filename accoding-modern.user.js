@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Accoding Modern · 北航 OJ 管理界面
 // @namespace    local.accoding.modern
-// @version      1.26.0
+// @version      1.26.1
 // @description  界面美化、教学工作台、按题筛选通过提交、页内代码复核、独立补题排行榜与提交查看、赛事统计看板、Markdown 兼容编辑、Statement LaTeX 工程导出与批量测试点选择，保留原站登录和操作。
 // @include      https://accoding.buaa.edu.cn:4000/*
 // @include      https://accoding-4000.e1.buaa.edu.cn/*
@@ -23,7 +23,7 @@
 
 (() => {
 'use strict';
-const ACCODING_MODERN_VERSION="1.26.0";
+const ACCODING_MODERN_VERSION="1.26.1";
 // Runtime URL compatibility for the direct site and BUAA VPN reverse proxy.
 // The VPN keeps the upstream app under /https-4000/<opaque-token>/, so absolute
 // root requests and pathname checks must be evaluated relative to that prefix.
@@ -1244,6 +1244,7 @@ function renderBlocks(lines, state) {
 
 function markdownToLatex(markdown, options = {}) {
   const warnings = [], images = [], seen = new Map();
+  const imageIndexStart = Number.isInteger(options.imageIndexStart) ? options.imageIndexStart : 0;
   const state = {
     warnings,
     addImage(url, alt) {
@@ -1251,7 +1252,7 @@ function markdownToLatex(markdown, options = {}) {
       if (!key) throw new Error('题面图片缺少地址。');
       if (!seen.has(key)) {
         if (images.length >= IMAGE_COUNT) throw new Error(`题面图片超过 ${IMAGE_COUNT} 张，未导出。`);
-        const entry = {index: images.length + 1, url: key, alt: String(alt || '')};
+        const entry = {index: imageIndexStart + images.length + 1, url: key, alt: String(alt || '')};
         images.push(entry);
         seen.set(key, entry);
       }
@@ -1266,8 +1267,10 @@ function markdownToLatex(markdown, options = {}) {
 function statementToLatex(statement, options = {}) {
   if (!statement || !Array.isArray(statement.problems) || !statement.problems.length) throw new Error('没有可导出的题面。');
   const warnings = [], images = [];
+  let imageIndexStart = 0;
   const body = statement.problems.map(problem => {
-    const converted = markdownToLatex(problem.description, {normalizeMath: options.normalizeMath});
+    const converted = markdownToLatex(problem.description, {normalizeMath: options.normalizeMath, imageIndexStart});
+    imageIndexStart += converted.images.length;
     warnings.push(...converted.warnings.map(warning => `${problem.heading}：${warning}`));
     images.push(...converted.images.map(image => ({...image, problem: problem.heading})));
     return `\\amproblem{${latexEscape(problem.label)}}{${latexEscape(problem.title)}}\n${converted.latex}\n`;

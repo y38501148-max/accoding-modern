@@ -68,6 +68,16 @@ test('statement document has the cover, problem order, page breaks and no file I
   assert.ok(!/文件名|目录|可执行|测试点|等分|编译选项|下发文件/.test(result.tex));
   assert.deepEqual(result.images.map(image=>image.problem),['A 第一题']);
 });
+test('images from different problems get unique project filenames',async()=>{
+  const raw=statement();
+  raw.problems[1].description+='\n\n![第二张](/image/2.png)';
+  const converted=statementToLatex(raw,{normalizeMath:value=>value});
+  assert.deepEqual(converted.images.map(image=>[image.index,image.url,image.problem]),[[1,'/image/1.png','A 第一题'],[2,'/image/2.png','B 第二题']]);
+  const project=await createLatexProject(raw,{templateClass,normalizeMath:value=>value,fetchImage:async()=>({bytes:png,contentType:'image/png'})});
+  const files=unzipStored(new Uint8Array(await project.blob.arrayBuffer()));
+  assert.ok(files.has('images/1.png'));
+  assert.ok(files.has('images/2.png'));
+});
 test('project ZIP contains the source, class, build scripts and fetched images',async()=>{
   const seen=[];
   const project=await createLatexProject(statement(),{

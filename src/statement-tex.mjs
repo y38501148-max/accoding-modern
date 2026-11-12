@@ -458,6 +458,7 @@ function renderBlocks(lines, state) {
 
 export function markdownToLatex(markdown, options = {}) {
   const warnings = [], images = [], seen = new Map();
+  const imageIndexStart = Number.isInteger(options.imageIndexStart) ? options.imageIndexStart : 0;
   const state = {
     warnings,
     addImage(url, alt) {
@@ -465,7 +466,7 @@ export function markdownToLatex(markdown, options = {}) {
       if (!key) throw new Error('题面图片缺少地址。');
       if (!seen.has(key)) {
         if (images.length >= IMAGE_COUNT) throw new Error(`题面图片超过 ${IMAGE_COUNT} 张，未导出。`);
-        const entry = {index: images.length + 1, url: key, alt: String(alt || '')};
+        const entry = {index: imageIndexStart + images.length + 1, url: key, alt: String(alt || '')};
         images.push(entry);
         seen.set(key, entry);
       }
@@ -480,8 +481,10 @@ export function markdownToLatex(markdown, options = {}) {
 export function statementToLatex(statement, options = {}) {
   if (!statement || !Array.isArray(statement.problems) || !statement.problems.length) throw new Error('没有可导出的题面。');
   const warnings = [], images = [];
+  let imageIndexStart = 0;
   const body = statement.problems.map(problem => {
-    const converted = markdownToLatex(problem.description, {normalizeMath: options.normalizeMath});
+    const converted = markdownToLatex(problem.description, {normalizeMath: options.normalizeMath, imageIndexStart});
+    imageIndexStart += converted.images.length;
     warnings.push(...converted.warnings.map(warning => `${problem.heading}：${warning}`));
     images.push(...converted.images.map(image => ({...image, problem: problem.heading})));
     return `\\amproblem{${latexEscape(problem.label)}}{${latexEscape(problem.title)}}\n${converted.latex}\n`;
