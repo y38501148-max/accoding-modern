@@ -134,20 +134,27 @@ async function renderStatement(view, statement, isCurrent, onProgress) {
     progress('正在编译公式与加载图片…');
     // MathJax sizes SVG output in ex units. SimSun's x-height is larger than
     // the TeX math font's, which otherwise scales formulas up and looks bold.
-    view.MathJax={root:'https://accoding-mathjax.invalid',skipStartupTypeset:true,showMathMenu:false,messageStyle:'none',jax:['input/TeX','output/SVG'],extensions:[],menuSettings:{renderer:'SVG',locale:'en'},tex2jax:{inlineMath:[['$','$'],['\\(','\\)']],displayMath:[['$$','$$'],['\\[','\\]']],processEscapes:true},SVG:{font:'TeX',scale:80,useGlobalCache:false}};
+    const mathConfig={root:'https://accoding-mathjax.invalid',skipStartupTypeset:true,showMathMenu:false,messageStyle:'none',jax:['input/TeX','output/SVG'],extensions:[],menuSettings:{renderer:'SVG',locale:'en'},tex2jax:{inlineMath:[['$','$'],['\\(','\\)']],displayMath:[['$$','$$'],['\\[','\\]']],processEscapes:true},SVG:{font:'TeX',scale:80,useGlobalCache:false}};
+    view.MathJax=mathConfig;
     // Keep the bundled renderer offline, including glyph paths, on VPN routes.
-    // Run it inside the preview iframe. Calling view.eval from the userscript
-    // sandbox can resolve to the OJ page's existing HTML-CSS MathJax, which then
-    // tries to fetch from the invalid offline root and never finishes.
+    // Put the config in the injected script as well: the userscript sandbox may
+    // not expose view.MathJax to the iframe realm, and the OJ page's existing
+    // HTML-CSS MathJax then wins and tries to fetch from the invalid root.
+    const mathBootstrap=`MathJax=${JSON.stringify(mathConfig)};\n${ACCODING_MATHJAX_SOURCE}`;
     const mathScript=doc.createElement('script');
-    mathScript.textContent=ACCODING_MATHJAX_SOURCE;
+    mathScript.textContent=mathBootstrap;
     doc.head.append(mathScript);
-    if(!view.MathJax?.Hub?.Queue){
+    const waitForMath=async()=>{
+      const deadline=Date.now()+3000;
+      while(!view.MathJax?.Hub?.Queue&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,50));
+      return view.MathJax?.Hub?.Queue;
+    };
+    if(!await waitForMath()){
       // Some OJ pages block inline scripts through CSP but allow unsafe-eval.
       // The Function constructor still executes in the preview iframe.
-      try{view.Function(ACCODING_MATHJAX_SOURCE).call(view);}catch{}
+      try{view.Function(mathBootstrap).call(view);}catch{}
     }
-    if(!view.MathJax?.Hub?.Queue)throw new Error('MathJax 未能在预览页初始化，请刷新页面后重试。');
+    if(!await waitForMath())throw new Error('MathJax 未能在预览页初始化，请刷新页面后重试。');
     const math=view.MathJax;
     const clearRanges=()=>clearLazyFontRanges(math);
     try{math.Hub.Register.StartupHook('End',clearRanges);}catch{}
