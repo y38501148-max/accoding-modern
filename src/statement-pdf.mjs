@@ -35,11 +35,18 @@ export function collectStatementMath(tokens, result = []) {
   return result;
 }
 
-// FontKit reports these source font line boxes with different em heights.
-// Normalize paragraph leading so Song's positive descender cannot collapse
-// wrapped Chinese lines, while Latin text keeps the same physical spacing.
-const statementFontHeight={Song:.6,Hei:1,Kai:1,Latin:1.407,Mono:2701/2048};
-const statementLeading=(font,spacing=1.3)=>spacing/statementFontHeight[font||'Song'];
+// Font metrics are normalized to em units. PDFMake uses signed descenders for
+// its line boxes; visual descents remain positive when aligning a baseline.
+const statementFontMetrics={
+  Song:{ascent:.8,descent:.2,box:.6},
+  Hei:{ascent:.88,descent:.12,box:1},
+  Kai:{ascent:.88,descent:.12,box:1},
+  Latin:{ascent:1.127,descent:.28,box:1.407},
+  Mono:{ascent:2146/2048,descent:555/2048,box:2701/2048}
+};
+const statementMetrics=font=>statementFontMetrics[font||'Song'];
+const closingPunctuation=/^[,.;:!?，。；：！？、\]）》」』】〕〉”’%‰°]+$/u;
+const openingPunctuation=/[（《「『【〔〈“‘(\[]$/u;
 
 const PAGE_WIDTH = 595.28, MARGIN = 70.87, WIDTH = PAGE_WIDTH - MARGIN * 2;
 const decode = value => String(value || '').replace(/&(?:amp|lt|gt|quot|#39);/g, v=>({'&amp;':'&','&lt;':'<','&gt;':'>','&quot;':'"','&#39;':"'"}[v]));
@@ -56,7 +63,7 @@ export async function statementPdfDefinition(statement, options) {
       else if (t.type === 'strong' || t.type === 'em' || t.type === 'del' || t.type === 'link') {
         const extra = t.type === 'strong' ? {font:'Hei'} : t.type === 'em' ? {italics:true} : t.type === 'del' ? {decoration:'lineThrough'} : /^https?:\/\//i.test(t.href) ? {link:t.href,decoration:'underline'} : {};
         result.push(...await inline(t.tokens,{...style,...extra}));
-      } else if (t.type === 'codespan') result.push({text:decode(t.text),font:'Mono',fontSize:10,...style});
+      } else if (t.type === 'codespan') result.push({...style,text:decode(t.text),font:style.font||'Song',fontSize:12});
       else if (t.tokens) result.push(...await inline(t.tokens,style));
       else if (t.type === 'html') {
         if (/^<br\s*\/?/i.test(t.text)) result.push({text:'\n',...style});
@@ -66,42 +73,70 @@ export async function statementPdfDefinition(statement, options) {
     return result;
   };
 
-  // PDFMake's text runs cannot contain SVG. Lay out mixed paragraphs one line
-  // at a time, keeping both text and SVG as PDF vectors and preventing clipping.
+  // Every fragment on a line uses one physical baseline. Native PDFMake
+  // columns otherwise align their tops and shift Latin/code text downward.
   async function paragraph(tokens, width = WIDTH, style = {}) {
-    const parts = (await inline(tokens,style)).flatMap(part=>part.kind==='graphic'||part.font==='Mono'?[part]:String(part.text).split(/([\x00-\x7f]+)/).filter(Boolean).map(text=>({...part,text,font:/^[\x00-\x7f]+$/.test(text)?'Latin':part.font})));
-    for(const part of parts)if(part.kind!=='graphic')part.lineHeight=statementLeading(part.font);
-    if (!parts.some(p=>p.kind === 'graphic')) return [{text:parts,margin:[0,2,0,6]}];
-    const lines = []; let line = [], used = 0;
-    const flush = () => {if (line.length) lines.push(line);line=[];used=0;};
-    for (const part of parts) {
-      if (part.kind === 'graphic') {
-        const ratio = Math.min(1,width/part.width), p = {...part,width:part.width*ratio,height:part.height*ratio,ascent:(part.ascent??part.height)*ratio,descent:(part.descent??0)*ratio};
-        if (used + p.width > width) flush();
-        line.push(p); used += p.width; continue;
+    const parts=(await inline(tokens,style)).flatMap(part=>part.kind==='graphic'||part.font==='Mono'?[part]:String(part.text).split(/([\x00-\x7f]+)/).filter(Boolean).map(text=>({...part,text,font:/^[\x00-\x7f]+$/.test(text)?'Latin':part.font})));
+    const atoms=[];
+    for(const part of parts) {
+      if(part.kind==='graphic') {
+        const ratio=Math.min(1,width/part.width);
+        atoms.push({...part,width:part.width*ratio,height:part.height*ratio,ascent:(part.ascent??part.height)*ratio,descent:(part.descent??0)*ratio});
+        continue;
       }
-      for (const segment of new Intl.Segmenter('zh',{granularity:'word'}).segment(part.text)) {
-        const chars = measure(segment.segment,part) > width ? [...segment.segment] : [segment.segment];
-        for (const text of chars) {
-          if (text === '\n') {flush();continue;}
-          const size = measure(text,part);
-          if (used + size > width + 0.05) flush();
-          if (!used && /^\s+$/.test(text)) continue;
-          const last = line.at(-1);
-          if (last && last.kind !== 'graphic' && last._style === part) {last.text += text;last.width += size;}
-          else line.push({...part,text,width:size,_style:part});
-          used += size;
+      const source=part.font==='Mono'?part.text:part.text.replace(/[^\S\n]+/g,' ');
+      for(const segment of new Intl.Segmenter('zh',{granularity:'word'}).segment(source)) {
+        const text=segment.segment;
+        const chunks=/\p{Script=Han}/u.test(text)||measure(text,part)>width?[...new Intl.Segmenter('zh',{granularity:'grapheme'}).segment(text)].map(p=>p.segment):[text];
+        for(const value of chunks)atoms.push({...part,text:value,width:measure(value,part),_style:part});
+      }
+    }
+    // Closing punctuation travels with the preceding glyph/formula; opening
+    // punctuation travels with the following fragment, including across styles.
+    const units=[];
+    for(const atom of atoms) {
+      const previous=units.at(-1);
+      if(atom.text!=='\n'&&previous&&previous.at(-1).text!=='\n'&&
+        (closingPunctuation.test(atom.text||'')||openingPunctuation.test(previous.at(-1).text||'')))previous.push(atom);
+      else units.push([atom]);
+    }
+    const lines=[];let line=[],used=0;
+    const flush=()=>{
+      while(line.length&&/^\s+$/.test(line.at(-1).text||''))line.pop();
+      if(line.length)lines.push(line);
+      line=[];used=0;
+    };
+    for(const unit of units) {
+      if(unit[0].text==='\n'){flush();continue;}
+      let size=unit.reduce((sum,atom)=>sum+atom.width,0);
+      if(size>width) {
+        const graphic=unit.find(atom=>atom.kind==='graphic');
+        if(graphic) {
+          const target=Math.max(1,width-(size-graphic.width)),ratio=target/graphic.width;
+          graphic.width=target;graphic.height*=ratio;graphic.ascent*=ratio;graphic.descent*=ratio;
+          size=unit.reduce((sum,atom)=>sum+atom.width,0);
         }
       }
+      if(used+size>width+.05)flush();
+      if(!used&&unit.every(atom=>/^\s+$/.test(atom.text||'')))continue;
+      for(const atom of unit) {
+        const last=line.at(-1);
+        if(last&&atom.kind!=='graphic'&&last.kind!=='graphic'&&last._style===atom._style){last.text+=atom.text;last.width+=atom.width;}
+        else line.push({...atom});
+      }
+      used+=size;
     }
     flush();
     return lines.map((items,index)=>{
-      const ascent=Math.max(9.6,...items.map(p=>p.ascent ?? (p.fontSize||12)*.8));
-      const descent=Math.max(2.4,...items.map(p=>p.descent ?? (p.fontSize||12)*.2));
+      const ascent=Math.max(12*statementMetrics('Latin').ascent,...items.map(p=>p.kind==='graphic'?p.ascent:statementMetrics(p.font).ascent*(p.fontSize||12)));
+      const descent=Math.max(12*statementMetrics('Latin').descent,...items.map(p=>p.kind==='graphic'?p.descent:statementMetrics(p.font).descent*(p.fontSize||12)));
       const height=Math.max(17,ascent+descent);
-      return {columns:items.map(({kind,height:h,ascent:a,descent:d,_style,...p})=>kind === 'graphic'
-        ? {...p,height:h,margin:[0,ascent-(a||h),0,0]}
-        : {...p,noWrap:true,lineHeight:statementLeading(p.font,1),margin:[0,ascent-(p.fontSize||12)*.8,0,Math.max(0,height-ascent-descent)]}),columnGap:0,margin:[0,1,0,index===lines.length-1?6:1],unbreakable:true};
+      const columns=items.map(({kind,height:h,ascent:a,descent:d,_style,...p})=>{
+        if(kind==='graphic')return {...p,height:h,margin:[0,ascent-a,0,height-(ascent-a)-h]};
+        const size=p.fontSize||12,metrics=statementMetrics(p.font),top=ascent-metrics.ascent*size;
+        return {...p,noWrap:true,preserveLeadingSpaces:true,preserveTrailingSpaces:true,lineHeight:1/metrics.box,margin:[0,top,0,Math.max(0,height-top-size)]};
+      });
+      return {columns,columnGap:0,margin:[0,index===0?2:0,0,index===lines.length-1?6:2],unbreakable:true,_statementBaseline:ascent+(index===0?2:0)};
     });
   }
   async function render(tokens,width = WIDTH,style = {}) {
@@ -115,14 +150,22 @@ export async function statementPdfDefinition(statement, options) {
         result.push({...p,width:p.width*ratio,height:p.height*ratio,alignment:'center',margin:[0,7,0,7]});
       } else if (t.type === 'code') {
         const lines=t.text.replace(/\t/g,'    ').split('\n');
-        result.push({table:{widths:[24,'*'],body:lines.map((line,index)=>[
-          {text:String(index+1),font:'Mono',fontSize:8,color:'#888888',alignment:'right'},
-          {text:(line || ' ').split(/([\u3400-\u9fff]+)/).filter(Boolean).map(text=>({text,font:/[\u3400-\u9fff]/.test(text)?'Song':'Mono'})),fontSize:10,preserveLeadingSpaces:true}
+        result.push({unbreakable:lines.length<=12,table:{dontBreakRows:true,widths:[24,'*'],body:lines.map((line,index)=>[
+          {text:String(index+1),font:'Mono',fontSize:8,lineHeight:1.25/statementMetrics('Mono').box,color:'#888888',alignment:'right'},
+          {text:(line || ' ').split(/([\u3400-\u9fff]+)/).filter(Boolean).map(text=>({text,font:/[\u3400-\u9fff]/.test(text)?'Song':'Mono',lineHeight:1.25/statementMetrics(/[\u3400-\u9fff]/.test(text)?'Song':'Mono').box})),fontSize:10,preserveLeadingSpaces:true}
         ])},layout:{hLineWidth:(i,node)=>i===0||i===node.table.body.length?0.5:0,vLineWidth:i=>i===0||i===2?0.5:0,hLineColor:()=> '#2860a0',vLineColor:()=> '#2860a0',paddingTop:()=>2,paddingBottom:()=>2,paddingLeft:()=>5,paddingRight:()=>5},margin:[0,5,0,8]});
       } else if (t.type === 'blockquote') result.push({stack:await render(t.tokens,width-24,{...style,font:'Kai'}),margin:[18,3,6,6]});
       else if (t.type === 'list') {
-        const items=await Promise.all(t.items.map(async item=>({stack:await render(item.tokens,width-22,style)})));
-        result.push({[t.ordered?'ol':'ul']:items,...(t.ordered?{start:t.start}:{}),margin:[6,2,0,5]});
+        for(const [index,item] of t.items.entries()) {
+          const label=t.ordered?`${Number(t.start||1)+index}.`:'•';
+          const markerWidth=t.ordered?Math.max(20,measure(label,{font:'Latin'})+6):18;
+          const body=await render(item.tokens,width-markerWidth,style);
+          const baseline=body[0]?._statementBaseline||15.5;
+          const marker=t.ordered
+            ? {text:label,font:'Latin',fontSize:12,lineHeight:1/statementMetrics('Latin').box,alignment:'right',margin:[0,baseline-statementMetrics('Latin').ascent*12,5,0]}
+            : {canvas:[{type:'ellipse',x:6,y:baseline-3.5,r1:1.7,r2:1.7,color:'#111111'}]};
+          result.push({columns:[{width:markerWidth,...marker},{width:width-markerWidth,stack:body}],columnGap:0,margin:[0,0,0,2]});
+        }
       } else if (t.type === 'table') {
         const cellWidth=(width-16*t.header.length)/t.header.length;
         const row=async(cells,heading)=>Promise.all(cells.map(async(cell,i)=>({stack:await paragraph(cell.tokens,cellWidth,{...style,...(heading?{font:'Hei'}:{})}),alignment:t.align[i] || 'left'})));

@@ -55,3 +55,37 @@ test('large images reserve their full height without drawing into previous parag
   const image=line.columns.find(column=>column.image);
   assert.equal(image.height,240);assert.ok(image.margin[1]>=0,JSON.stringify(image));
 });
+
+const layoutFixture=description=>({title:'测试',contestTitle:'测试',dateText:'2026',problems:[{label:'A',title:'测试',heading:'A 测试',timeLimitText:'1000 ms',memoryLimitText:'65536 KB',description}]});
+const layoutOptions={lex,measure:text=>text.length*6,math:()=>({svg:'<svg/>',width:8,height:9,ascent:7,descent:2})};
+function paragraphRows(definition){return definition.content.filter(n=>n._statementBaseline);}
+
+test('Chinese, Latin, inline text and math share one physical baseline',async()=>{
+  const definition=await statementPdfDefinition(layoutFixture('中文 A `code` $x$。'),layoutOptions);
+  const row=paragraphRows(definition)[0];
+  const baseline=column=>column.margin[1]+(column.svg?7:({Song:.8,Latin:1.127,Mono:2146/2048}[column.font||'Song'])*(column.fontSize||12));
+  const baselines=row.columns.map(baseline);
+  assert.ok(Math.max(...baselines)-Math.min(...baselines)<1e-8,JSON.stringify(baselines));
+});
+test('inline code with Chinese retains every character using a CJK font',async()=>{
+  const definition=await statementPdfDefinition(layoutFixture('`小 T` 与 `code`'),layoutOptions);
+  const columns=paragraphRows(definition).flatMap(row=>row.columns);
+  const chinese=columns.find(column=>column.text==='小');assert.equal(chinese.font,'Song');assert.equal(chinese.fontSize,12);
+  assert.ok(columns.some(column=>column.font==='Latin'&&column.text.includes('T')));
+  assert.ok(columns.every(column=>(column.fontSize||12)===12&&column.font!=='Mono'));
+  assert.ok(columns.filter(column=>column.text).every(column=>column.preserveLeadingSpaces&&column.preserveTrailingSpaces));
+});
+test('list markers occupy their own column before formula-leading content',async()=>{
+  const definition=await statementPdfDefinition(layoutFixture('- $x$ 表示数值；\n- `inf` 表示无穷。'),layoutOptions);
+  const list=definition.content.filter(node=>node.columns?.[0]?.canvas);
+  assert.equal(list.length,2);
+  for(const row of list){assert.ok(row.columns[0].width>=18);assert.ok(row.columns[1].stack[0].columns);}
+});
+test('wrapping keeps closing punctuation with preceding text and formula',async()=>{
+  const description='| 内容 | 值 |\n|---|---|\n| '+'中'.repeat(33)+'$x$；后文。 | 1 |';
+  const definition=await statementPdfDefinition(layoutFixture(description),layoutOptions);
+  const table=definition.content.filter(n=>n.table).at(-1);
+  const rows=table.table.body[1][0].stack;
+  assert.ok(rows.length>=2);
+  for(const row of rows)assert.doesNotMatch(row.columns[0]?.text||'',/^[，。；：！？、;:!?]/);
+});
