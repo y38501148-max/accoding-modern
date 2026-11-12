@@ -120,7 +120,9 @@ async function renderStatement(view, statement, isCurrent, onProgress) {
       const section=buildStatementProblem(doc,p);section.style.setProperty('page',`p${index}`);main.append(section);
     }
     progress('正在编译公式与加载图片…');
-    view.MathJax={root:'https://accoding-mathjax.invalid',skipStartupTypeset:true,showMathMenu:false,messageStyle:'none',jax:['input/TeX','output/SVG'],extensions:[],menuSettings:{renderer:'SVG',locale:'en'},tex2jax:{inlineMath:[['$','$'],['\\(','\\)']],displayMath:[['$$','$$'],['\\[','\\]']],processEscapes:true},SVG:{font:'TeX',useGlobalCache:false}};
+    // MathJax sizes SVG output in ex units. SimSun's x-height is larger than
+    // the TeX math font's, which otherwise scales formulas up and looks bold.
+    view.MathJax={root:'https://accoding-mathjax.invalid',skipStartupTypeset:true,showMathMenu:false,messageStyle:'none',jax:['input/TeX','output/SVG'],extensions:[],menuSettings:{renderer:'SVG',locale:'en'},tex2jax:{inlineMath:[['$','$'],['\\(','\\)']],displayMath:[['$$','$$'],['\\[','\\]']],processEscapes:true},SVG:{font:'TeX',scale:80,useGlobalCache:false}};
     // Keep the bundled renderer offline, including glyph paths, on VPN routes.
     view.eval(ACCODING_MATHJAX_SOURCE);
     await new Promise((resolve,reject)=>{
