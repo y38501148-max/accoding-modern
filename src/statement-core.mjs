@@ -21,12 +21,11 @@ function cssString(value) {
 
 const statementPageFont = '"Times New Roman","SimSun","Songti SC","Noto Serif CJK SC",serif';
 
-export function statementCoverRows(statement) {
-  return [
-    {label: '题目名称', values: statement.problems.map(problem => problem.heading)},
-    {label: '时间限制', values: statement.problems.map(problem => problem.timeLimitText)},
-    {label: '空间限制', values: statement.problems.map(problem => problem.memoryLimitText)}
-  ];
+export function statementCoverTable(statement) {
+  return {
+    columns: ['题号', '题目名称', '时间限制', '空间限制'],
+    rows: statement.problems.map(problem => [problem.label, problem.title, problem.timeLimitText, problem.memoryLimitText])
+  };
 }
 
 export function statementPageRules(statement) {

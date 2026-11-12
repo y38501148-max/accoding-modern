@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createContestCore} from '../src/contest-core.mjs';
-import {createStatementCore,statementCoverRows,statementPageRules} from '../src/statement-core.mjs';
+import {createStatementCore,statementCoverTable,statementPageRules} from '../src/statement-core.mjs';
 import {readFile} from 'node:fs/promises';
 import vm from 'node:vm';
 
@@ -33,13 +33,14 @@ test('statement dates cross the Beijing day boundary as a range',()=>{
   const raw=fixture();raw.start_time='2026-10-20T20:00:00Z';raw.end_time='2026-10-21T20:00:00Z';
   assert.equal(service.compile(raw,1329).dateText,'2026 年 10 月 21 日 — 2026 年 10 月 22 日');
 });
-test('cover only contains OJ metadata and never template file or compile rows',()=>{
-  const out=service.compile(fixture(),1329),rows=statementCoverRows(out);
-  assert.deepEqual(rows.map(row=>row.label),['题目名称','时间限制','空间限制']);
-  assert.deepEqual(rows[0].values,['A 第一题','B 第二题']);
-  assert.deepEqual(rows[1].values,['1000 ms','3000 ms']);
-  assert.deepEqual(rows[2].values,['65536 KB','131072 KB']);
-  assert.ok(!/文件名|目录|可执行|测试点|等分|编译选项|下发文件/.test(JSON.stringify(rows)));
+test('cover puts each problem number and name on one row without template file rows',()=>{
+  const out=service.compile(fixture(),1329),table=statementCoverTable(out);
+  assert.deepEqual(table.columns,['题号','题目名称','时间限制','空间限制']);
+  assert.deepEqual(table.rows,[
+    ['A','第一题','1000 ms','65536 KB'],
+    ['B','第二题','3000 ms','131072 KB']
+  ]);
+  assert.ok(!/文件名|目录|可执行|测试点|等分|编译选项|下发文件/.test(JSON.stringify(table)));
 });
 test('page rules name every problem and escape CSS content strings',()=>{
   const raw=fixture();raw.title='C5 - 引号"与\\反斜杠';
@@ -57,7 +58,8 @@ test('page rules name every problem and escape CSS content strings',()=>{
 });
 test('statement stylesheet keeps the OI template typography',async()=>{
   const css=await readFile(new URL('../src/statement.css',import.meta.url),'utf8');
-  for(const token of ['SimSun','SimHei','Consolas','line-height:1.565','text-emphasis:dot','@media print'])assert.ok(css.includes(token),token);
+  for(const token of ['SimSun','SimHei','Consolas','line-height:1.565','text-emphasis:dot','font-synthesis:none','page-break-before:always','margin:3pt -3.5pt 3pt 8.5pt','@media print'])assert.ok(css.includes(token),token);
+  assert.match(css,/\.problem-title\{[^}]*font-weight:400/);
 });
 test('statement reads numeric and string limits from decoded or JSON test settings',()=>{
   for(const encode of [value=>value,JSON.stringify,value=>JSON.stringify(JSON.stringify(value))]){

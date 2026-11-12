@@ -67,17 +67,17 @@ function buildStatementCover(doc, statement) {
   const title=doc.createElement('h1');title.className='cover-title';title.textContent=statement.contestTitle;
   const date=doc.createElement('p');date.className='cover-date';date.textContent=`时间：${statement.dateText}`;
   const table=doc.createElement('table');table.className='cover-table';
-  if(statement.problems.length>8)table.classList.add('compact');
-  const columns=doc.createElement('colgroup');
-  for(let index=0;index<=statement.problems.length;index++)columns.append(doc.createElement('col'));
+  const {columns,rows}=statementCoverTable(statement);
+  const head=doc.createElement('thead'),headRow=doc.createElement('tr');
+  for(const column of columns){const cell=doc.createElement('th');cell.scope='col';cell.textContent=column;headRow.append(cell);}
+  head.append(headRow);
   const body=doc.createElement('tbody');
-  for(const row of statementCoverRows(statement)){
-    const tr=doc.createElement('tr'),label=doc.createElement('th');
-    label.scope='row';label.textContent=row.label;tr.append(label);
-    for(const value of row.values){const cell=doc.createElement('td');cell.textContent=value;tr.append(cell);}
+  for(const row of rows){
+    const tr=doc.createElement('tr');
+    for(const value of row){const cell=doc.createElement('td');cell.textContent=value;tr.append(cell);}
     body.append(tr);
   }
-  table.append(columns,body);cover.append(title,date,table);
+  table.append(head,body);cover.append(title,date,table);
   return cover;
 }
 
@@ -143,6 +143,9 @@ async function renderStatement(view, statement, isCurrent, onProgress) {
     await doc.fonts.ready;current();
     if(failed.length)throw new Error(`${failed.length} 张图片加载失败，未打开打印。请检查题面图片后重试：\n${failed.join('\n')}`);
     if(main.querySelector('.MathJax_Error'))throw new Error('题面中存在无法编译的公式，请检查后重试。');
+    // Never print a silently broken statement when the OJ page's MathJax did not run.
+    const mathText=[...main.querySelectorAll('.markdown-body p,.markdown-body li,.markdown-body td,.markdown-body th,.markdown-body h1,.markdown-body h2,.markdown-body h3')].some(node=>/\$[^$\n]+\$|\\\(|\\\[/.test(node.textContent));
+    if(mathText&&!main.querySelector('.MathJax_SVG,.MathJax_CHTML,mjx-container'))throw new Error('题面公式未能渲染，请刷新页面后重试。');
     progress('排版完成。在打印窗口选择“另存为 PDF”，并关闭浏览器的“页眉和页脚”。');
     print.disabled=false;print.onclick=()=>printStatement(view,statement.title);printStatement(view,statement.title);
   }catch(error){progress('导出失败：'+error.message);throw error;}
